@@ -32,7 +32,7 @@ type CheckModemActor struct {
 }
 
 const (
-	maxError      = 5
+	maxError      = 3
 	maxSuccess    = 3
 	timeoutWait   = 300 * time.Second
 	ipTestInitial = "8.8.8.8"

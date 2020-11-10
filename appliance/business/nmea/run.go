@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	timeoutMax = 30 * time.Second
+	timeoutMax       = 30 * time.Second
+	timeoutBadFrames = 15 * time.Minute
 )
 
 var filter = []string{"$GPRMC", "$GPGGA"}
@@ -30,6 +31,7 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 	lat0 := float64(0)
 	long0_t := float64(0)
 	lat0_t := float64(0)
+	sendDistance := false
 
 	chDist := make(chan int, 0)
 	t1 := time.NewTimer(time.Duration(timeout) * time.Second)
@@ -144,6 +146,18 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 		}()
 
 		ch := act.dev.Read()
+
+		queue := NewQueue()
+		type validFrame struct {
+			timeStamp string
+			raw       string
+		}
+		mapFrames := make(map[string]*validFrame)
+		badFrames := new(validFrame)
+		badFrameCount := 0
+
+		tbadcount := time.NewTicker(timeoutBadFrames)
+		defer tbadcount.Stop()
 		tmax := time.NewTicker(timeoutMax)
 		defer tmax.Stop()
 
@@ -152,6 +166,13 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 			select {
 			case <-chResetStop:
 				return fmt.Errorf("reset modem NMEA, timer stop")
+			case <-tbadcount.C:
+				rateBad := float64(badFrameCount) / timeoutBadFrames.Minutes()
+				badgps := fmt.Sprintf("{\"timeStamp\": %d, \"value\": %.2f, \"type\": %q}", time.Now().Unix(), rateBad, "GPSERROR")
+				badFrameCount = 0
+				logs.LogInfo.Printf("last bad GPS frame -> %q", badFrames.raw)
+				logs.LogInfo.Printf("rate bad GPS -> %.2f", rateBad)
+				act.context.Send(act.pubsubPID, &msgBadGPS{data: badgps})
 			case <-tmax.C:
 				// if len(mapCaptures) <= 0 {
 				// 	break break_for
@@ -176,22 +197,61 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 						continue
 					}
 					if len(gtype) > 3 {
-						mapCaptures[gtype] = fmt.Sprintf("{\"timeStamp\": %f, \"value\": %q, \"type\": %q}", timeStamp, frame, gtype[1:len(gtype)-1])
-						act.context.Send(act.pubsubPID, &msgGPS{data: frame})
 
-						if strings.Contains(gtype, "GPRMC") {
-							gprmc := gpsnmea.ParseRMC(frame)
-							long1 := gpsnmea.LatLongToDecimalDegree(gprmc.Long, gprmc.LongCord)
-							lat1 := gpsnmea.LatLongToDecimalDegree(gprmc.Lat, gprmc.LatCord)
-							distance := gpsnmea.Distance(lat0, long0, lat1, long1, "K")
-							if distance > float64(distanceMin)/1000 {
-								logs.LogBuild.Printf("distance: %v K\n", distance)
-								long0 = long1
-								lat0 = lat1
-								chDist <- 1
+						switch {
+						case strings.HasPrefix(frame, "$GPGGA"):
+							sendDistance = false
+							if vg := gpsnmea.ParseGGA(frame); vg != nil {
+								if !isValidFrame(queue, vg) {
+									// logs.LogBuild.Printf("bad GPS frame -> %q", vg.Raw)
+									badFrames = &validFrame{timeStamp: vg.TimeStamp, raw: vg.Raw}
+									break
+								}
+
+								// mapCaptures["$GPGGA"] = fmt.Sprintf("{\"timeStamp\": %f, \"value\": %q, \"type\": %q}", timeStamp, frame, gtype[1:len(gtype)-1])
+								mapFrames["$GPGGA"] = &validFrame{raw: frame, timeStamp: vg.TimeStamp}
+								// act.context.Send(act.pubsubPID, &msgGPS{data: frame})
+
+								for k, v := range mapFrames {
+									if strings.Contains(v.timeStamp, vg.TimeStamp) {
+										act.context.Send(act.pubsubPID, &msgGPS{data: v.raw})
+										mapCaptures[k] = fmt.Sprintf("{\"timeStamp\": %f, \"value\": %q, \"type\": %q}", timeStamp, v.raw, k[1:])
+									}
+								}
+
+								long1 := gpsnmea.LatLongToDecimalDegree(vg.Long, vg.LongCord)
+								lat1 := gpsnmea.LatLongToDecimalDegree(vg.Lat, vg.LatCord)
+								distance := gpsnmea.Distance(lat0, long0, lat1, long1, "K")
+								if distance > float64(distanceMin)/1000 {
+									logs.LogBuild.Printf("distance: %v K\n", distance)
+									long0 = long1
+									lat0 = lat1
+									sendDistance = true
+									chDist <- 1
+								}
+								long0_t = long1
+								lat0_t = lat1
+
 							}
-							long0_t = long1
-							lat0_t = lat1
+						case strings.HasPrefix(frame, "$GPRMC"):
+							if vg := gpsnmea.ParseRMC(frame); vg != nil {
+								vgga, ok := mapFrames["$GPGGA"]
+								if !ok || !strings.Contains(vgga.timeStamp, vg.TimeStamp) {
+									mapFrames["$GPRMC"] = &validFrame{raw: frame, timeStamp: vg.TimeStamp}
+									break
+								}
+
+								mssg := fmt.Sprintf("{\"timeStamp\": %f, \"value\": %q, \"type\": %q}", timeStamp, frame, gtype[1:len(gtype)-1])
+								mapCaptures["$GPRMC"] = mssg
+								act.context.Send(act.pubsubPID, &msgGPS{data: frame})
+
+								//verify last verify distance
+								if sendDistance {
+									logs.LogBuild.Printf("distance, EVENT -> %s\n", mssg)
+									act.context.Send(act.pubsubPID, &eventGPS{event: mssg})
+								}
+
+							}
 						}
 					}
 				} else {

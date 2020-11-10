@@ -12,6 +12,10 @@ type eventGPS struct {
 	event string
 }
 
+type msgBadGPS struct {
+	data string
+}
+
 type AddressModem struct {
 	Addr string
 	ID   string

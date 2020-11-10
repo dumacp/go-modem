@@ -40,6 +40,12 @@ func (act *actorpubsub) Receive(ctx actor.Context) {
 			act.clientMqtt.Disconnect(100)
 			panic("MQTT connection failed")
 		}
+	case *msgBadGPS:
+		token := act.clientMqtt.Publish(topicGPS, 0, false, msg.data)
+		if ok := token.WaitTimeout(10 * time.Second); !ok {
+			act.clientMqtt.Disconnect(100)
+			panic("MQTT connection failed")
+		}
 	case *eventGPS:
 		// fmt.Printf("event: %s\n", msg.event)
 		token := act.clientMqtt.Publish(topicEventGPS, 0, false, msg.event)
