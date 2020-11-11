@@ -205,6 +205,7 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 								if !isValidFrame(queue, vg) {
 									// logs.LogBuild.Printf("bad GPS frame -> %q", vg.Raw)
 									badFrames = &validFrame{timeStamp: vg.TimeStamp, raw: vg.Raw}
+									badFrameCount++
 									break
 								}
 

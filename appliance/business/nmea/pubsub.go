@@ -12,6 +12,7 @@ const (
 	clietnName    = "go-nmea-actor"
 	topicGPS      = "GPS"
 	topicEventGPS = "EVENTS/gps"
+	topicBadGPS   = "EVENTS/badgps"
 )
 
 type actorpubsub struct {
@@ -41,7 +42,7 @@ func (act *actorpubsub) Receive(ctx actor.Context) {
 			panic("MQTT connection failed")
 		}
 	case *msgBadGPS:
-		token := act.clientMqtt.Publish(topicGPS, 0, false, msg.data)
+		token := act.clientMqtt.Publish(topicBadGPS, 0, false, msg.data)
 		if ok := token.WaitTimeout(10 * time.Second); !ok {
 			act.clientMqtt.Disconnect(100)
 			panic("MQTT connection failed")
