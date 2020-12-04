@@ -16,11 +16,13 @@ const (
 	sConnect = "sConnect"
 	sRun     = "sRun"
 	sReset   = "sReset"
+	sStop    = "sStop"
 )
 
 const (
 	startEvent       = "startEvent"
 	readFailEvent    = "readFailEvent"
+	readStopEvent    = "readStopEvent"
 	connectOKEvent   = "connectOKEvent"
 	connectFailEvent = "connectFailEvent"
 	timeoutEvent     = "tomeoutEvent"
@@ -46,13 +48,12 @@ func (act *actornmea) initFSM() {
 			{Name: connectFailEvent, Src: []string{sConnect}, Dst: sReset},
 			{Name: timeoutEvent, Src: []string{sConnect}, Dst: sConnect},
 			{Name: readFailEvent, Src: []string{sRun}, Dst: sReset},
+			{Name: readStopEvent, Src: []string{sRun}, Dst: sStop},
 			{Name: resetEvent, Src: []string{sReset}, Dst: sConnect},
 		},
 		fsm.Callbacks{
 			"enter_state": func(e *fsm.Event) {
-				if act.debug {
-					infolog.Printf("FSM NMEA state Src: %v, state Dst: %v", e.Src, e.Dst)
-				}
+				logs.LogBuild.Printf("FSM NMEA state Src: %v, state Dst: %v", e.Src, e.Dst)
 			},
 			"leave_state": func(e *fsm.Event) {
 				if e.Err != nil {
@@ -68,29 +69,30 @@ func (act *actornmea) initFSM() {
 	)
 }
 
-func (act *actornmea) startfsm() {
+func (act *actornmea) startfsm(chQuit chan int) {
 	// log.Println(m.Current())
-	funcRutine := func() (err error) {
+	funcRutine := func() (errx error) {
 		defer func() {
 			if r := recover(); r != nil {
 				logs.LogError.Println("Recovered in \"startfsm()\", ", r)
 				switch x := r.(type) {
 				case string:
-					err = errors.New(x)
+					errx = errors.New(x)
 				case error:
-					err = x
+					errx = x
 				default:
-					err = errors.New("Unknown panic")
+					errx = errors.New("Unknown panic")
 				}
 			}
 		}()
+		act.fsm.SetState(sStart)
 		for {
 			// log.Println(m.Current())
 			switch act.fsm.Current() {
 			case sStart:
 				dev, err := gpsnmea.NewDevice(act.portNmea, act.baudRate, filter...)
 				if err != nil {
-					warnlog.Println(err)
+					logs.LogWarn.Println(err)
 					act.fsm.Event(connectFailEvent)
 					break
 				}
@@ -99,7 +101,7 @@ func (act *actornmea) startfsm() {
 			case sConnect:
 				act.dev.Close()
 				if err := act.dev.Open(); err != nil {
-					warnlog.Println(err)
+					logs.LogWarn.Println(err)
 					time.Sleep(5 * time.Second)
 					act.fsm.Event(connectFailEvent)
 					break
@@ -110,10 +112,24 @@ func (act *actornmea) startfsm() {
 				time.Sleep(30 * time.Second)
 				act.fsm.Event(resetEvent)
 			case sRun:
-				if err := act.run(act.timeout, act.distanceMin); err != nil {
-					logs.LogError.Println(err)
+				funcRun := func() {
+					if err := act.run(chQuit, act.timeout, act.distanceMin); err != nil {
+						logs.LogError.Println(err)
+						select {
+						case <-chQuit:
+							act.fsm.Event(readStopEvent)
+							return
+						default:
+						}
+						act.fsm.Event(readFailEvent)
+						return
+					}
+					logs.LogWarn.Println("stop run function in nmea")
+					act.fsm.Event(readStopEvent)
 				}
-				act.fsm.Event(readFailEvent)
+				funcRun()
+			case sStop:
+				return nil
 			default:
 				time.Sleep(3 * time.Second)
 			}
@@ -123,5 +139,6 @@ func (act *actornmea) startfsm() {
 		if err := funcRutine(); err != nil {
 			act.context.Send(act.context.Self(), &msgFatal{err: err})
 		}
+		act.context.Send(act.context.Self(), &msgStop{})
 	}()
 }

@@ -4,6 +4,9 @@ type msgFatal struct {
 	err error
 }
 
+type msgStop struct{}
+type msgStart struct{}
+
 type msgGPS struct {
 	data string
 }
@@ -15,6 +18,8 @@ type eventGPS struct {
 type msgBadGPS struct {
 	data string
 }
+
+type StopNmea struct{}
 
 type AddressModem struct {
 	Addr string

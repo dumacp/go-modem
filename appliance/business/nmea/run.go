@@ -16,12 +16,44 @@ import (
 
 const (
 	timeoutMax       = 30 * time.Second
-	timeoutBadFrames = 15 * time.Minute
+	timeoutBadFrames = 10 * time.Minute
 )
 
 var filter = []string{"$GPRMC", "$GPGGA"}
 
-func (act *actornmea) run(timeout, distanceMin int) error {
+func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
+
+	select {
+	case _, ok := <-chFinish:
+		if !ok {
+			logs.LogWarn.Println("chFinish is closed")
+		}
+		return nil
+	default:
+	}
+
+	logs.LogBuild.Println("========== RUN NMEA ============")
+	logs.LogBuild.Println("========== ======== ============")
+
+	chQuit := make(chan int, 0)
+	defer func() {
+		select {
+		case <-chQuit:
+		default:
+			close(chQuit)
+		}
+	}()
+
+	go func() {
+		select {
+		case <-chFinish:
+			select {
+			case <-chQuit:
+			default:
+				close(chQuit)
+			}
+		}
+	}()
 
 	re := regexp.MustCompile(`\$[a-zA-Z]+,`)
 
@@ -36,9 +68,6 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 	chDist := make(chan int, 0)
 	t1 := time.NewTimer(time.Duration(timeout) * time.Second)
 	defer t1.Stop()
-
-	chQuit := make(chan int, 0)
-	defer close(chQuit)
 
 	go func() {
 		defer close(chDist)
@@ -93,6 +122,7 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 
 	go func() {
 		defer close(chReset)
+		defer close(chResetStop)
 
 		for {
 			select {
@@ -141,11 +171,12 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 
 		defer func() {
 			if r := recover(); r != nil {
-				errlog.Println("Recovered in funcListen, ", r)
+				logs.LogError.Println("Recovered in funcListen, ", r)
 			}
 		}()
 
 		ch := act.dev.Read()
+		defer act.dev.Close()
 
 		queue := NewQueue()
 		type validFrame struct {
@@ -164,8 +195,15 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 		tn := time.Now()
 		for {
 			select {
-			case <-chResetStop:
-				return fmt.Errorf("reset modem NMEA, timer stop")
+			case _, ok := <-chResetStop:
+				if ok {
+					return fmt.Errorf("reset modem NMEA, timer stop")
+				}
+				logs.LogWarn.Println("reset modem NMEA, timer stop channel nil")
+				return nil
+			case <-chQuit:
+				logs.LogWarn.Println("chQuit nil funcListen in run")
+				return nil
 			case <-tbadcount.C:
 				rateBad := float64(badFrameCount) / timeoutBadFrames.Minutes()
 				badgps := fmt.Sprintf("{\"timeStamp\": %d, \"value\": %.2f, \"type\": %q}", time.Now().Unix(), rateBad, "GPSERROR")
@@ -251,13 +289,12 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 									logs.LogBuild.Printf("distance, EVENT -> %s\n", mssg)
 									act.context.Send(act.pubsubPID, &eventGPS{event: mssg})
 								}
-
 							}
 						}
 					}
 				} else {
 					if !timerModem.active {
-						modemVerify(180)
+						modemVerify(1200)
 					}
 				}
 			}
@@ -268,7 +305,8 @@ func (act *actornmea) run(timeout, distanceMin int) error {
 		// errlog.Println(err)
 		return err
 	}
-	return fmt.Errorf("funcListen terminated")
+	logs.LogWarn.Printf("funcListen terminated in run nmea")
+	return nil
 }
 
 // func (act *actornmea) resetModem() {

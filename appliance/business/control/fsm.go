@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dumacp/go-modem/appliance/business/messages"
+	"github.com/dumacp/go-modem/appliance/crosscutting/logs"
 	"github.com/looplab/fsm"
 )
 
-const (
-	timeoutReset = 15 * time.Minute
+var (
+	timeoutReset = 1 * time.Minute
 )
 
 const (
@@ -93,13 +95,11 @@ func (act *CheckModemActor) initFSM() {
 		},
 		fsm.Callbacks{
 			"enter_state": func(e *fsm.Event) {
-				if act.debug {
-					infolog.Printf("FSM MODEM state Src: %v, state Dst: %v", e.Src, e.Dst)
-				}
+				logs.LogBuild.Printf("FSM MODEM state Src: %v, state Dst: %v", e.Src, e.Dst)
 			},
 			"leave_state": func(e *fsm.Event) {
 				act.countError = 0
-				// infolog.Printf("countError = %v; resetCmd = %v", act.countError, act.resetCmd)
+				// logs.LogInfo.Printf("countError = %v; resetCmd = %v", act.countError, act.resetCmd)
 				if e.Err != nil {
 					e.Cancel(e.Err)
 				}
@@ -148,7 +148,7 @@ func (act *CheckModemActor) startfsm() {
 	funcRutine := func() (err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				errlog.Println("Recovered in \"startfsm()\",", r)
+				logs.LogError.Println("Recovered in \"startfsm()\",", r)
 				switch x := r.(type) {
 				case string:
 					err = errors.New(x)
@@ -160,15 +160,15 @@ func (act *CheckModemActor) startfsm() {
 			}
 		}()
 		for {
-			// infolog.Printf("current state: %v", act.fsm.Current())
+			// logs.LogInfo.Printf("current state: %v", act.fsm.Current())
 			switch act.fsm.Current() {
 			case sStart:
 				act.behavior.Become(act.stateRun)
 				if !verifySIM(act.mSierra) {
-					warnlog.Println("SIM is not OK!")
+					logs.LogWarn.Println("SIM is not OK!")
 					act.fsm.Event(testFailEvent)
 				} else {
-					infolog.Println("SIM is OK!")
+					logs.LogInfo.Println("SIM is OK!")
 					act.fsm.Event(startEvent)
 				}
 			case sWaitModem1:
@@ -194,7 +194,7 @@ func (act *CheckModemActor) startfsm() {
 					break
 				}
 				if err := pingFunc(act.testIP); err != nil {
-					warnlog.Println(err)
+					logs.LogWarn.Println(err)
 					act.fsm.Event(testFailEvent)
 					break
 				}
@@ -220,7 +220,7 @@ func (act *CheckModemActor) startfsm() {
 				if !reConnect(act.mSierra, act.apn) {
 					if act.countError > 5 {
 						if !verifySIM(act.mSierra) {
-							warnlog.Println("SIM is not OK!")
+							logs.LogWarn.Println("SIM is not OK!")
 						}
 						act.fsm.Event(connFailEvent)
 					} else {
@@ -236,44 +236,50 @@ func (act *CheckModemActor) startfsm() {
 					break
 				}
 				if err := ifDown(); err != nil {
-					if act.debug {
-						infolog.Println(err)
-					}
+					logs.LogBuild.Println(err)
 				}
 				time.Sleep(1 * time.Second)
 				if err := ifUp(); err != nil {
-					warnlog.Println(err)
+					logs.LogWarn.Println(err)
 					act.fsm.Event(testFailEvent)
 					break
 				}
 				if err := pingFunc(act.testIP); err != nil {
 					if act.countError > 3 {
-						warnlog.Printf("ping error: %s\n", err)
+						logs.LogWarn.Printf("ping error: %s\n", err)
 						act.fsm.Event(testFailEvent)
 					} else {
 						act.countError++
 					}
 					break
 				}
-				infolog.Println("modem NET connected!")
+				logs.LogInfo.Println("modem NET connected!")
 				act.fsm.Event(testOKEvent)
 			case sReset:
 				if act.lastReset.Add(timeoutReset).Unix() > time.Now().Unix() {
 					act.fsm.Event(timeoutEvent)
 					break
 				}
+				if timeoutReset < 15*time.Minute {
+					timeoutReset = timeoutReset + 2*time.Minute
+				} else {
+					timeoutReset = 3 * time.Minute
+				}
 				act.fsm.Event(resetEvent)
 			case sResetHard:
 				act.behavior.Become(act.stateReset)
+				for _, v := range act.remotesPID {
+					act.context.Send(v, &messages.ModemReset{})
+				}
 				if act.countReset > maxError {
 					act.fsm.Event(testFailMaxEvent)
 					break
 				}
 				act.countReset++
-				warnlog.Println("reset modem")
+				logs.LogWarn.Println("reset modem")
 				if !resetSWModem(act.mSierra) {
 					if !resetModem(act.mSierra) {
-						errlog.Println("Error reset Modem")
+						logs.LogError.Println("Error reset Modem")
 					}
 				}
 				act.lastReset = time.Now()
@@ -296,18 +302,18 @@ func (act *CheckModemActor) startfsm() {
 				act.fsm.Event(modemOKEvent)
 			case sPowerOff:
 				if verifyModem(act.mSierra) == 1 {
-					errlog.Println("serial port connecting Error")
+					logs.LogError.Println("serial port connecting Error")
 					resetUSBHost(act.mSierra)
 				}
 				if !powerOffModem(act.mSierra) {
-					errlog.Println("Error power Off Modem")
+					logs.LogError.Println("Error power Off Modem")
 				}
 				act.lastReset = time.Now()
 				time.Sleep(3 * time.Second)
 				act.fsm.Event(powerOffEvent)
 			case sPowerOn:
 				if !powerOnModem(act.mSierra) {
-					errlog.Println("Error power On Modem")
+					logs.LogError.Println("Error power On Modem")
 					panic("Error power On Modem")
 				}
 				time.Sleep(10 * time.Second)

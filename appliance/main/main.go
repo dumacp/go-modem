@@ -32,7 +32,7 @@ var version bool
 
 const (
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.6"
+	versionString = "1.0.8"
 )
 
 func init() {

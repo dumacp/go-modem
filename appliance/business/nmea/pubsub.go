@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/dumacp/go-modem/appliance/crosscutting/logs"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
@@ -29,7 +30,7 @@ func NewPubSubActor(debug bool) actor.Actor {
 func (act *actorpubsub) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
-		infolog.Printf("actor started \"%s\"", ctx.Self().Id)
+		logs.LogInfo.Printf("actor started \"%s\"", ctx.Self().Id)
 		clientMqtt, err := connectMqtt()
 		if err != nil {
 			panic(err)

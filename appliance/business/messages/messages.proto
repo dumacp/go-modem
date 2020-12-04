@@ -21,7 +21,9 @@ message StatusResponse {
 }
 
 message ModemAddrRequest {}
-message ModemOnRequest {}
+message ModemOnRequest {
+	actor.PID Sender = 1;
+}
 message ModemAddr {
 	string Addr = 1;
 	string Id = 2;
