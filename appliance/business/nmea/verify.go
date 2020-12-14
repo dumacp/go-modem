@@ -154,7 +154,7 @@ func verifyAltitude(g1 *gpsnmea.Gpgga) *gpsnmea.Gpgga {
 	if g1 == nil {
 		return nil
 	}
-	if g1.Altitude > 2900 {
+	if g1.Altitude > 3500 {
 		return nil
 	}
 	if g1.Altitude < 1300 {

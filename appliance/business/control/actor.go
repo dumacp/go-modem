@@ -18,19 +18,20 @@ type msgFatal struct {
 }
 
 type CheckModemActor struct {
-	debug      bool
-	behavior   actor.Behavior
-	mSierra    sierra.SierraModem
-	context    actor.Context
-	remotesPID map[string]*actor.PID
-	fsm        *fsm.FSM
-	testIP     string
-	apn        string
-	countError int
-	countReset int
-	countWait  int
-	resetCmd   bool
-	lastReset  time.Time
+	debug        bool
+	behavior     actor.Behavior
+	mSierra      sierra.SierraModem
+	context      actor.Context
+	remotesPID   map[string]*actor.PID
+	fsm          *fsm.FSM
+	testIP       string
+	apn          string
+	countError   int
+	countReset   int
+	countWait    int
+	resetCmd     bool
+	lastReset    time.Time
+	disableReset bool
 }
 
 const (
@@ -40,12 +41,13 @@ const (
 	ipTestInitial = "8.8.8.8"
 )
 
-func NewCheckModemActor(debug bool) actor.Actor {
+func NewCheckModemActor(debug bool, reset bool) actor.Actor {
 	//initLogs(debug)
 	act := &CheckModemActor{
 		behavior: actor.NewBehavior(),
 	}
 	act.debug = debug
+	act.disableReset = reset
 	act.mSierra = newModem()
 	act.remotesPID = make(map[string]*actor.PID)
 	act.initFSM()

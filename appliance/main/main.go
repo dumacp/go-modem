@@ -29,16 +29,18 @@ var portNmea string
 var distanceMin int
 
 var version bool
+var reset bool
 
 const (
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.8"
+	versionString = "1.0.10"
 )
 
 func init() {
 	flag.BoolVar(&debug, "debug", false, "debug")
 	flag.BoolVar(&logstd, "logStd", false, "logs in stderr")
 	flag.BoolVar(&version, "version", false, "swho version")
+	flag.BoolVar(&reset, "disablereset", false, "disable remote reset")
 	flag.BoolVar(&mqtt, "mqtt", false, "[DEPRECATED] send messages to local broker.")
 	flag.IntVar(&port, "port", 8082, "port actor in remote mode")
 	flag.IntVar(&timeout, "timeout", 30, "timeout to capture frames.")
@@ -105,7 +107,7 @@ func main() {
 				timeout,
 				distanceMin,
 			).Receive)
-			propsCheck := actor.PropsFromFunc(control.NewCheckModemActor(debug).Receive)
+			propsCheck := actor.PropsFromFunc(control.NewCheckModemActor(debug, reset).Receive)
 			pidNmea, err := c.SpawnNamed(propsNmea, "nmeaGPS")
 			if err != nil {
 				logs.LogError.Panic(err)

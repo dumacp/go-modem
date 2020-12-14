@@ -172,7 +172,7 @@ func (act *CheckModemActor) startfsm() {
 					act.fsm.Event(startEvent)
 				}
 			case sWaitModem1:
-				if act.resetCmd {
+				if act.resetCmd && !act.disableReset {
 					act.fsm.Event(resetCmdEvent)
 					break
 				}
@@ -189,7 +189,7 @@ func (act *CheckModemActor) startfsm() {
 				}
 				act.fsm.Event(modemOKEvent)
 			case sTestConn1:
-				if act.resetCmd {
+				if act.resetCmd && !act.disableReset {
 					act.fsm.Event(resetCmdEvent)
 					break
 				}
@@ -200,7 +200,7 @@ func (act *CheckModemActor) startfsm() {
 				}
 				act.fsm.Event(testOKEvent)
 			case sWait:
-				if act.resetCmd {
+				if act.resetCmd && !act.disableReset {
 					act.fsm.Event(resetCmdEvent)
 					break
 				}
@@ -213,7 +213,7 @@ func (act *CheckModemActor) startfsm() {
 			case sReconnect:
 				errInc.restart()
 				act.behavior.Become(act.stateRun)
-				if act.resetCmd {
+				if act.resetCmd && !act.disableReset {
 					act.fsm.Event(resetCmdEvent)
 					break
 				}
@@ -231,7 +231,7 @@ func (act *CheckModemActor) startfsm() {
 				}
 				act.fsm.Event(connOKEvent)
 			case sIfDownUp:
-				if act.resetCmd {
+				if act.resetCmd && !act.disableReset {
 					act.fsm.Event(resetCmdEvent)
 					break
 				}
