@@ -65,18 +65,24 @@ func (act *actornmea) Run(ctx actor.Context) {
 		//time.Sleep(3 * time.Second)
 		//panic(fmt.Errorf("msgStop arrive in nmea"))
 	case *messages.ModemReset:
+		if act.fsm.Current() != sRun {
+			logs.LogWarn.Printf("nmea read modemReset %q,  fsm in not RUN", ctx.Self().Id)
+		}
 		select {
-		case act.chQuit <- 1:
-		case <-time.After(10 * time.Second):
-			//close(act.chQuit)
-			//act.chQuit = make(chan int, 0)
+		case _, ok := <-act.chQuit:
+			if ok {
+				close(act.chQuit)
+			}
+		default:
+			close(act.chQuit)
 		}
 		logs.LogWarn.Printf("nmea read modemReset \"%s\"", ctx.Self().Id)
+
 		//time.Sleep(3 * time.Second)
 		//panic(fmt.Errorf("modemReset arrive in nmea"))
 		//ctx.Send(ctx.Self(), &msgStart{})
 	case *msgFatal:
-		logs.LogError.Println(msg.err)
+		logs.LogError.Printf("nmead read failed: %s", msg.err)
 		act.behavior.Become(act.Wait)
 		act.state = WaitState
 		select {
@@ -128,6 +134,7 @@ func (act *actornmea) Wait(ctx actor.Context) {
 				case <-time.After(3 * time.Second):
 				}
 			}
+			logs.LogInfo.Println("startfsm nmea")
 			act.startfsm(act.chQuit)
 			act.behavior.Become(act.Run)
 			act.state = RunState

@@ -278,6 +278,7 @@ func (act *CheckModemActor) startfsm() {
 				act.countReset++
 				logs.LogWarn.Println("reset modem")
 				if !resetSWModem(act.mSierra) {
+					logs.LogWarn.Println("reset HW modem")
 					if !resetModem(act.mSierra) {
 						logs.LogError.Println("Error reset Modem")
 					}
@@ -299,12 +300,10 @@ func (act *CheckModemActor) startfsm() {
 						act.fsm.Event(timeoutEvent)
 					}
 				}
-				act.fsm.Event(modemOKEvent)
+				// act.fsm.Event(modemOKEvent)
 			case sPowerOff:
-				if verifyModem(act.mSierra) == 1 {
-					logs.LogError.Println("serial port connecting Error")
-					resetUSBHost(act.mSierra)
-				}
+				logs.LogInfo.Println("modem will be off!")
+
 				if !powerOffModem(act.mSierra) {
 					logs.LogError.Println("Error power Off Modem")
 				}
@@ -316,7 +315,12 @@ func (act *CheckModemActor) startfsm() {
 					logs.LogError.Println("Error power On Modem")
 					panic("Error power On Modem")
 				}
-				time.Sleep(10 * time.Second)
+				time.Sleep(3 * time.Second)
+				if verifyModem(act.mSierra) == 1 {
+					logs.LogError.Println("serial port connecting Error")
+					resetUSBHost(act.mSierra)
+				}
+				time.Sleep(20 * time.Second)
 				act.fsm.Event(powerOnEvent)
 			default:
 				time.Sleep(3 * time.Second)

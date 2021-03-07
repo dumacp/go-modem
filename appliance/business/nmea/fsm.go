@@ -48,7 +48,7 @@ func (act *actornmea) initFSM() {
 			{Name: connectFailEvent, Src: []string{sConnect}, Dst: sReset},
 			{Name: timeoutEvent, Src: []string{sConnect}, Dst: sConnect},
 			{Name: readFailEvent, Src: []string{sRun}, Dst: sReset},
-			{Name: readStopEvent, Src: []string{sRun}, Dst: sStop},
+			{Name: readStopEvent, Src: []string{sRun, sConnect}, Dst: sStop},
 			{Name: resetEvent, Src: []string{sReset}, Dst: sConnect},
 		},
 		fsm.Callbacks{
@@ -85,6 +85,7 @@ func (act *actornmea) startfsm(chQuit chan int) {
 				}
 			}
 		}()
+		countFail := 0
 		act.fsm.SetState(sStart)
 		for {
 			// log.Println(m.Current())
@@ -103,7 +104,12 @@ func (act *actornmea) startfsm(chQuit chan int) {
 				if err := act.dev.Open(); err != nil {
 					logs.LogWarn.Println(err)
 					time.Sleep(5 * time.Second)
-					act.fsm.Event(connectFailEvent)
+					if countFail > 2 {
+						act.fsm.Event(readStopEvent)
+					} else {
+						countFail++
+						act.fsm.Event(connectFailEvent)
+					}
 					break
 				}
 				act.fsm.Event(connectOKEvent)

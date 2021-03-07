@@ -10,9 +10,9 @@ const (
 )
 
 //NewModem function to connect with sierra modem
-func newModem() sierra.SierraModem {
+func newModem(port string) sierra.SierraModem {
 	opts := &sierra.PortOptions{
-		Port: portModem,
+		Port: port,
 		Baud: baudModem,
 	}
 	modSierra := sierra.NewModem(opts)

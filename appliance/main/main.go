@@ -26,6 +26,7 @@ var apnConn string
 var timeout int
 var baudRate int
 var portNmea string
+var portModem string
 var distanceMin int
 
 var version bool
@@ -33,7 +34,7 @@ var reset bool
 
 const (
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.10"
+	versionString = "1.0.14"
 )
 
 func init() {
@@ -46,6 +47,7 @@ func init() {
 	flag.IntVar(&timeout, "timeout", 30, "timeout to capture frames.")
 	flag.IntVar(&baudRate, "baudRate", 115200, "baud rate to capture nmea's frames.")
 	flag.StringVar(&portNmea, "portNmea", "/dev/ttyUSB1", "device serial to read.")
+	flag.StringVar(&portModem, "portModem", "/dev/ttyUSB2", "device serial to conf modem.")
 	flag.IntVar(&distanceMin, "distance", 30, "minimun distance traveled before to send")
 }
 
@@ -107,7 +109,7 @@ func main() {
 				timeout,
 				distanceMin,
 			).Receive)
-			propsCheck := actor.PropsFromFunc(control.NewCheckModemActor(debug, reset).Receive)
+			propsCheck := actor.PropsFromFunc(control.NewCheckModemActor(debug, reset, portModem).Receive)
 			pidNmea, err := c.SpawnNamed(propsNmea, "nmeaGPS")
 			if err != nil {
 				logs.LogError.Panic(err)
