@@ -43,7 +43,7 @@ func (act *actornmea) initFSM() {
 	act.fsm = fsm.NewFSM(
 		sStart,
 		fsm.Events{
-			{Name: startEvent, Src: []string{sStart}, Dst: sConnect},
+			{Name: startEvent, Src: []string{sStart, sStop}, Dst: sConnect},
 			{Name: connectOKEvent, Src: []string{sConnect}, Dst: sRun},
 			{Name: connectFailEvent, Src: []string{sConnect}, Dst: sReset},
 			{Name: timeoutEvent, Src: []string{sConnect}, Dst: sConnect},
@@ -105,6 +105,7 @@ func (act *actornmea) startfsm(chQuit chan int) {
 					logs.LogWarn.Println(err)
 					time.Sleep(5 * time.Second)
 					if countFail > 2 {
+						act.context.Send(act.context.Self(), &msgStop{})
 						act.fsm.Event(readStopEvent)
 					} else {
 						countFail++
@@ -123,28 +124,27 @@ func (act *actornmea) startfsm(chQuit chan int) {
 						logs.LogError.Println(err)
 						select {
 						case <-chQuit:
-							act.fsm.Event(readStopEvent)
-							return
 						default:
 						}
 						act.fsm.Event(readFailEvent)
 						return
 					}
-					logs.LogWarn.Println("stop run function in nmea")
 					act.fsm.Event(readStopEvent)
 				}
 				funcRun()
+				logs.LogWarn.Println("stop run function in nmea")
 			case sStop:
-				return nil
+				time.Sleep(3 * time.Second)
 			default:
 				time.Sleep(3 * time.Second)
 			}
 		}
 	}
 	go func() {
-		if err := funcRutine(); err != nil {
-			act.context.Send(act.context.Self(), &msgFatal{err: err})
+		for {
+			if err := funcRutine(); err != nil {
+				act.context.Send(act.context.Self(), &msgFatal{err: err})
+			}
 		}
-		act.context.Send(act.context.Self(), &msgStop{})
 	}()
 }

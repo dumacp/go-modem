@@ -42,10 +42,12 @@ func NewNmeaActor(debug bool, portNmea string, baudRate, timeout, distanceMin in
 	act.baudRate = baudRate
 	act.distanceMin = distanceMin
 	act.initFSM()
+	act.chQuit = make(chan int, 0)
+	act.startfsm(act.chQuit)
 	act.behavior.Become(act.Wait)
 	act.state = WaitState
-	act.chQuit = make(chan int, 0)
 	act.chQuitTick = make(chan int, 0)
+	go act.checkModem(act.chQuitTick)
 	return act
 }
 
@@ -69,12 +71,11 @@ func (act *actornmea) Run(ctx actor.Context) {
 			logs.LogWarn.Printf("nmea read modemReset %q,  fsm in not RUN", ctx.Self().Id)
 		}
 		select {
-		case _, ok := <-act.chQuit:
-			if ok {
-				close(act.chQuit)
-			}
-		default:
-			close(act.chQuit)
+		case act.chQuit <- 1:
+			logs.LogWarn.Printf("stopping RUN nmea function")
+		case <-time.After(30 * time.Second):
+			logs.LogWarn.Printf("error stopping RUN nmea function")
+			panic("error stopping RUN nmea function")
 		}
 		logs.LogWarn.Printf("nmea read modemReset \"%s\"", ctx.Self().Id)
 
@@ -86,12 +87,9 @@ func (act *actornmea) Run(ctx actor.Context) {
 		act.behavior.Become(act.Wait)
 		act.state = WaitState
 		select {
-		case _, ok := <-act.chQuit:
-			if ok {
-				close(act.chQuit)
-			}
+		case act.chQuit <- 1:
+			logs.LogWarn.Printf("stopping RUN nmea function")
 		default:
-			close(act.chQuit)
 		}
 		//time.Sleep(3 * time.Second)
 		//panic(msg.err)
@@ -116,7 +114,7 @@ func (act *actornmea) Wait(ctx actor.Context) {
 		}
 		act.pubsubPID = pidPubSub
 		ctx.Watch(pidPubSub)
-		go act.checkModem(act.chQuitTick)
+
 	case *actor.Stopping:
 		logs.LogInfo.Printf("actor stopping \"%s\"", ctx.Self().Id)
 	case *messages.ModemOnResponse:
@@ -125,17 +123,19 @@ func (act *actornmea) Wait(ctx actor.Context) {
 			select {
 			case _, ok := <-act.chQuit:
 				if !ok {
-					logs.LogBuild.Println("act.chQuit is closed")
 					act.chQuit = make(chan int, 0)
+					logs.LogWarn.Printf("error chQuit in RUN nmea is closed")
+					panic("error chQuit in RUN nmea is closed")
 				}
 			default:
 				select {
 				case act.chQuit <- 1:
-				case <-time.After(3 * time.Second):
+				case <-time.After(10 * time.Second):
 				}
 			}
 			logs.LogInfo.Println("startfsm nmea")
-			act.startfsm(act.chQuit)
+			// act.startfsm(act.chQuit)
+			act.fsm.Event(startEvent)
 			act.behavior.Become(act.Run)
 			act.state = RunState
 		}

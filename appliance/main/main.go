@@ -34,7 +34,7 @@ var reset bool
 
 const (
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.14"
+	versionString = "1.0.15"
 )
 
 func init() {
