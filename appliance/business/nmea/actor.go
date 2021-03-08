@@ -67,9 +67,7 @@ func (act *actornmea) Run(ctx actor.Context) {
 		//time.Sleep(3 * time.Second)
 		//panic(fmt.Errorf("msgStop arrive in nmea"))
 	case *messages.ModemReset:
-		if act.fsm.Current() != sRun {
-			logs.LogWarn.Printf("nmea read modemReset %q,  fsm in not RUN", ctx.Self().Id)
-		}
+		logs.LogWarn.Printf("nmea msg modemReset")
 		select {
 		case act.chQuit <- 1:
 			logs.LogWarn.Printf("stopping RUN nmea function")
@@ -77,7 +75,7 @@ func (act *actornmea) Run(ctx actor.Context) {
 			logs.LogWarn.Printf("error stopping RUN nmea function")
 			act.behavior.Become(act.Wait)
 			act.state = WaitState
-			panic("error stopping RUN nmea function")
+			// panic("error stopping RUN nmea function")
 		}
 		logs.LogWarn.Printf("nmea read modemReset \"%s\"", ctx.Self().Id)
 
