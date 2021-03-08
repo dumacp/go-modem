@@ -58,16 +58,6 @@ func (act *actornmea) Receive(ctx actor.Context) {
 
 func (act *actornmea) Run(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
-	case *actor.Started:
-		logs.LogInfo.Printf("actor started \"%s\"", ctx.Self().Id)
-
-		propsPubSub := actor.PropsFromFunc(NewPubSubActor(act.debug).Receive)
-		pidPubSub, err := ctx.SpawnNamed(propsPubSub, "nmeaPubSub")
-		if err != nil {
-			logs.LogError.Panic(err)
-		}
-		act.pubsubPID = pidPubSub
-		ctx.Watch(pidPubSub)
 	case *actor.Stopping:
 		logs.LogInfo.Printf("actor stopping \"%s\"", ctx.Self().Id)
 	case *msgStop:
@@ -85,6 +75,8 @@ func (act *actornmea) Run(ctx actor.Context) {
 			logs.LogWarn.Printf("stopping RUN nmea function")
 		case <-time.After(30 * time.Second):
 			logs.LogWarn.Printf("error stopping RUN nmea function")
+			act.behavior.Become(act.Wait)
+			act.state = WaitState
 			panic("error stopping RUN nmea function")
 		}
 		logs.LogWarn.Printf("nmea read modemReset \"%s\"", ctx.Self().Id)
@@ -120,6 +112,7 @@ func (act *actornmea) Wait(ctx actor.Context) {
 		propsPubSub := actor.PropsFromFunc(NewPubSubActor(act.debug).Receive)
 		pidPubSub, err := ctx.SpawnNamed(propsPubSub, "nmeaPubSub")
 		if err != nil {
+			time.Sleep(3 * time.Second)
 			logs.LogError.Panic(err)
 		}
 		act.pubsubPID = pidPubSub
