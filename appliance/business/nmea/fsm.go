@@ -95,6 +95,7 @@ func (act *actornmea) startfsm(chQuit chan int) {
 				if err != nil {
 					logs.LogWarn.Println(err)
 					act.fsm.Event(connectFailEvent)
+					time.Sleep(3 * time.Second)
 					break
 				}
 				act.dev = dev
