@@ -18,6 +18,11 @@ func newLog(logger *logs.Logger, prefix string, flags int, priority int) error {
 }
 
 func initLogs(debug, logStd bool) {
+	defer func() {
+		if !debug {
+			logs.LogBuild.Disable()
+		}
+	}()
 	if logStd {
 		return
 	}
@@ -25,7 +30,5 @@ func initLogs(debug, logStd bool) {
 	newLog(logs.LogWarn, "[ info ] ", log.LstdFlags, 6)
 	newLog(logs.LogError, "[ build ] ", log.LstdFlags, 7)
 	newLog(logs.LogBuild, "[ error ] ", log.LstdFlags, 3)
-	if !debug {
-		logs.LogBuild.Disable()
-	}
+
 }

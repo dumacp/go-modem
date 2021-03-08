@@ -77,7 +77,7 @@ func (act *actornmea) Run(ctx actor.Context) {
 			logs.LogWarn.Printf("error stopping RUN nmea function")
 			act.behavior.Become(act.Wait)
 			act.state = WaitState
-			panic("error stopping RUN nmea function")
+			// panic("error stopping RUN nmea function")
 		}
 		logs.LogWarn.Printf("nmea read modemReset \"%s\"", ctx.Self().Id)
 

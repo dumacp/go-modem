@@ -102,14 +102,16 @@ func main() {
 	props := actor.PropsFromFunc(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *actor.Started:
-			propsNmea := actor.PropsFromFunc(nmea.NewNmeaActor(
+			nmeaA := nmea.NewNmeaActor(
 				debug,
 				portNmea,
 				baudRate,
 				timeout,
 				distanceMin,
-			).Receive)
-			propsCheck := actor.PropsFromFunc(control.NewCheckModemActor(debug, reset, portModem).Receive)
+			)
+			propsNmea := actor.PropsFromFunc(nmeaA.Receive)
+			controlA := control.NewCheckModemActor(debug, reset, portModem)
+			propsCheck := actor.PropsFromFunc(controlA.Receive)
 			pidNmea, err := c.SpawnNamed(propsNmea, "nmeaGPS")
 			if err != nil {
 				logs.LogError.Panic(err)
