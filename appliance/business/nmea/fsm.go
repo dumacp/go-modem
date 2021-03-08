@@ -41,7 +41,7 @@ func leaveState(state string) string {
 
 func (act *actornmea) initFSM() {
 	act.fsm = fsm.NewFSM(
-		sStart,
+		sStop,
 		fsm.Events{
 			{Name: startEvent, Src: []string{sStart, sStop}, Dst: sConnect},
 			{Name: connectOKEvent, Src: []string{sConnect}, Dst: sRun},
@@ -86,7 +86,7 @@ func (act *actornmea) startfsm(chQuit chan int) {
 			}
 		}()
 		countFail := 0
-		act.fsm.SetState(sStart)
+		// act.fsm.SetState(sStart)
 		for {
 			// log.Println(m.Current())
 			switch act.fsm.Current() {
@@ -129,6 +129,7 @@ func (act *actornmea) startfsm(chQuit chan int) {
 						act.fsm.Event(readFailEvent)
 						return
 					}
+					act.context.Send(act.context.Self(), &msgStop{})
 					act.fsm.Event(readStopEvent)
 				}
 				funcRun()
