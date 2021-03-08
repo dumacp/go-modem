@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/AsynkronIT/protoactor-go/remote"
 	"github.com/dumacp/go-modem/appliance/business/control"
 	"github.com/dumacp/go-modem/appliance/business/messages"
 	"github.com/dumacp/go-modem/appliance/business/nmea"
@@ -60,8 +59,8 @@ func main() {
 	}
 	initLogs(debug, logstd)
 
-	remote.Start(fmt.Sprintf("127.0.0.1:%v", port),
-		remote.WithAdvertisedAddress(fmt.Sprintf("localhost:%v", port)))
+	// remote.Start(fmt.Sprintf("127.0.0.1:%v", port),
+	// 	remote.WithAdvertisedAddress(fmt.Sprintf("localhost:%v", port)))
 
 	rootContext := actor.EmptyRootContext
 
