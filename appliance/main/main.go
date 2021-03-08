@@ -46,8 +46,8 @@ func init() {
 	flag.IntVar(&port, "port", 8082, "port actor in remote mode")
 	flag.IntVar(&timeout, "timeout", 30, "timeout to capture frames.")
 	flag.IntVar(&baudRate, "baudRate", 115200, "baud rate to capture nmea's frames.")
-	flag.StringVar(&portNmea, "portNmea", "/dev/ttyUSB1", "device serial to read.")
-	flag.StringVar(&portModem, "portModem", "/dev/ttyUSB2", "device serial to conf modem.")
+	flag.StringVar(&portNmea, "portNmea", "/dev/ttyGPS", "device serial to read.")
+	flag.StringVar(&portModem, "portModem", "/dev/ttyMODEM", "device serial to conf modem.")
 	flag.IntVar(&distanceMin, "distance", 30, "minimun distance traveled before to send")
 }
 

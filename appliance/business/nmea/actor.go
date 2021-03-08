@@ -58,6 +58,16 @@ func (act *actornmea) Receive(ctx actor.Context) {
 
 func (act *actornmea) Run(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
+	case *actor.Started:
+		logs.LogInfo.Printf("actor started \"%s\"", ctx.Self().Id)
+
+		propsPubSub := actor.PropsFromFunc(NewPubSubActor(act.debug).Receive)
+		pidPubSub, err := ctx.SpawnNamed(propsPubSub, "nmeaPubSub")
+		if err != nil {
+			logs.LogError.Panic(err)
+		}
+		act.pubsubPID = pidPubSub
+		ctx.Watch(pidPubSub)
 	case *actor.Stopping:
 		logs.LogInfo.Printf("actor stopping \"%s\"", ctx.Self().Id)
 	case *msgStop:
