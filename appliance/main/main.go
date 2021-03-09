@@ -35,7 +35,7 @@ var reset bool
 const (
 	pathudev      = "/etc/udev/rules.d/local.rules"
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.16"
+	versionString = "1.0.17"
 )
 
 func init() {
