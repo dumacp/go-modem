@@ -286,6 +286,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 
 								//verify last verify distance
 								if sendDistance {
+									sendDistance = false
 									logs.LogBuild.Printf("distance, EVENT -> %s\n", mssg)
 									act.context.Send(act.pubsubPID, &eventGPS{event: mssg})
 								}

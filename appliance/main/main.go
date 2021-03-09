@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -32,8 +33,9 @@ var version bool
 var reset bool
 
 const (
+	pathudev      = "/etc/udev/rules.d/local.rules"
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.15"
+	versionString = "1.0.16"
 )
 
 func init() {
@@ -58,6 +60,50 @@ func main() {
 		os.Exit(2)
 	}
 	initLogs(debug, logstd)
+
+	if portNmea == "/dev/ttyGPS" {
+		if fileenv, err := os.Open(pathudev); err != nil {
+			logs.LogWarn.Printf("error: reading file UDEV, %s", err)
+		} else {
+			scanner := bufio.NewScanner(fileenv)
+			succ := false
+			for scanner.Scan() {
+				line := scanner.Text()
+				// log.Println(line)
+				if strings.Contains(line, "ttyGPS") {
+					succ = true
+					break
+
+				}
+			}
+			if !succ {
+				portNmea = "/dev/ttyUSB1"
+			}
+		}
+	}
+	logs.LogBuild.Printf("portNmea: %s", portNmea)
+
+	if portModem == "/dev/ttyMODEM" {
+		if fileenv, err := os.Open(pathudev); err != nil {
+			logs.LogWarn.Printf("error: reading file UDEV, %s", err)
+		} else {
+			scanner := bufio.NewScanner(fileenv)
+			succ := false
+			for scanner.Scan() {
+				line := scanner.Text()
+				// log.Println(line)
+				if strings.Contains(line, "ttyMODEM") {
+					succ = true
+					break
+
+				}
+			}
+			if !succ {
+				portModem = "/dev/ttyUSB2"
+			}
+		}
+	}
+	logs.LogBuild.Printf("portModem: %s", portModem)
 
 	// remote.Start(fmt.Sprintf("127.0.0.1:%v", port),
 	// 	remote.WithAdvertisedAddress(fmt.Sprintf("localhost:%v", port)))
