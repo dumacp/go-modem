@@ -256,16 +256,20 @@ func (act *CheckModemActor) startfsm() {
 				logs.LogInfo.Println("modem NET connected!")
 				act.fsm.Event(testOKEvent)
 			case sReset:
-				if act.lastReset.Add(timeoutReset).Unix() > time.Now().Unix() {
-					act.fsm.Event(timeoutEvent)
-					break
-				}
-				if timeoutReset < 15*time.Minute {
-					timeoutReset = timeoutReset + 2*time.Minute
-				} else {
-					timeoutReset = 3 * time.Minute
-				}
-				act.fsm.Event(resetEvent)
+				func() {
+					defer func() {
+						if timeoutReset < 15*time.Minute {
+							timeoutReset = timeoutReset + 2*time.Minute
+						} else {
+							timeoutReset = 2 * time.Minute
+						}
+					}()
+					if act.lastReset.Add(timeoutReset).Unix() > time.Now().Unix() {
+						act.fsm.Event(timeoutEvent)
+						return
+					}
+					act.fsm.Event(resetEvent)
+				}()
 			case sResetHard:
 				act.behavior.Become(act.stateReset)
 				for _, v := range act.remotesPID {
