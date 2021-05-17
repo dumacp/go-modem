@@ -142,7 +142,7 @@ func (state *CheckModemActor) stateReset(context actor.Context) {
 		}
 		state.apn = msg.Apn
 	case *messages.ModemOnRequest:
-		fmt.Printf("%s from %s\n", msg, context.Sender())
+		logs.LogInfo.Printf("%s from %s\n", msg, context.Sender().GetId())
 		if context.Sender() != nil {
 			state.remotesPID[context.Sender().GetId()] = context.Sender()
 		}

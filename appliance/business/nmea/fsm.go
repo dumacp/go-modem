@@ -104,7 +104,7 @@ func (act *actornmea) startfsm(chQuit chan int) {
 				act.dev.Close()
 				if err := act.dev.Open(); err != nil {
 					logs.LogWarn.Println(err)
-					time.Sleep(5 * time.Second)
+					time.Sleep(3 * time.Second)
 					if countFail > 2 {
 						act.context.Send(act.context.Self(), &msgStop{})
 						act.fsm.Event(readStopEvent)
@@ -114,10 +114,11 @@ func (act *actornmea) startfsm(chQuit chan int) {
 					}
 					break
 				}
+				countFail = 0
 				act.fsm.Event(connectOKEvent)
 			case sReset:
 				act.context.Request(act.modemPID, &messages.ModemReset{})
-				time.Sleep(30 * time.Second)
+				time.Sleep(3 * time.Second)
 				act.fsm.Event(resetEvent)
 			case sRun:
 				funcRun := func() {
@@ -137,6 +138,11 @@ func (act *actornmea) startfsm(chQuit chan int) {
 				logs.LogWarn.Println("stop run function in nmea")
 			case sStop:
 				time.Sleep(3 * time.Second)
+				countFail++
+				if countFail > 30 {
+					act.fsm.Event(startEvent)
+					countFail = 0
+				}
 			default:
 				time.Sleep(3 * time.Second)
 			}

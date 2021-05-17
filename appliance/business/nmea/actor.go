@@ -124,9 +124,10 @@ func (act *actornmea) Wait(ctx actor.Context) {
 			select {
 			case _, ok := <-act.chQuit:
 				if !ok {
-					act.chQuit = make(chan int, 0)
+					//act.chQuit = make(chan int, 0)
 					logs.LogWarn.Printf("error chQuit in RUN nmea is closed")
 					panic("error chQuit in RUN nmea is closed")
+					time.Sleep(3 * time.Second)
 				}
 			default:
 				select {

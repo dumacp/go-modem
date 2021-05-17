@@ -131,7 +131,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 				chResetStop <- 0
 			case v := <-chReset:
 				if v <= 0 {
-					// logs.LogWarn.Println("modem reset timer off, with GPS data")
+					logs.LogWarn.Println("modem reset timer off, with GPS data")
 					if !timerModem.timer.Stop() {
 						select {
 						case <-timerModem.timer.C:
@@ -261,7 +261,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 								long1 := gpsnmea.LatLongToDecimalDegree(vg.Long, vg.LongCord)
 								lat1 := gpsnmea.LatLongToDecimalDegree(vg.Lat, vg.LatCord)
 								distance := gpsnmea.Distance(lat0, long0, lat1, long1, "K")
-								if distance > float64(distanceMin)/1000 {
+								if distance > float64(distanceMin)*0.90/1000 {
 									logs.LogBuild.Printf("distance: %v K\n", distance)
 									long0 = long1
 									lat0 = lat1
@@ -288,12 +288,13 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 								if sendDistance {
 									sendDistance = false
 									logs.LogBuild.Printf("distance, EVENT -> %s\n", mssg)
-									act.context.Send(act.pubsubPID, &eventGPS{event: mssg})
+									// act.context.Send(act.pubsubPID, &eventGPS{event: mssg})
 								}
 							}
 						}
 					}
 				} else {
+					// logs.LogWarn.Printf("frame bad format %s", frame)
 					if !timerModem.active {
 						modemVerify(1200)
 					}
