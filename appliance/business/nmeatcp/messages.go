@@ -18,5 +18,6 @@ type AddressModem struct {
 }
 
 type AddressPubSub struct {
-	ID string
+	Addr string
+	ID   string
 }

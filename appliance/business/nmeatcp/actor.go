@@ -49,7 +49,7 @@ func (act *actornmea) Receive(ctx actor.Context) {
 	case *AddressModem:
 		act.modemPID = actor.NewPID(msg.Addr, msg.ID)
 	case *AddressPubSub:
-		act.pubsubPID = actor.NewLocalPID(msg.ID)
+		act.pubsubPID = actor.NewPID(msg.Addr, msg.ID)
 	case *actor.Terminated:
 		errlog.Printf("actor terminated: %s", msg.Who.GetId())
 	}

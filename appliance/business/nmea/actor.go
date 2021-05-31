@@ -96,7 +96,7 @@ func (act *actornmea) Run(ctx actor.Context) {
 	case *AddressModem:
 		act.modemPID = actor.NewPID(msg.Addr, msg.ID)
 	case *AddressPubSub:
-		act.pubsubPID = actor.NewLocalPID(msg.ID)
+		act.pubsubPID = actor.NewPID(msg.Addr, msg.ID)
 	case *actor.Terminated:
 		logs.LogError.Printf("actor terminated: %s", msg.Who.GetId())
 	}
@@ -144,7 +144,7 @@ func (act *actornmea) Wait(ctx actor.Context) {
 	case *AddressModem:
 		act.modemPID = actor.NewPID(msg.Addr, msg.ID)
 	case *AddressPubSub:
-		act.pubsubPID = actor.NewLocalPID(msg.ID)
+		act.pubsubPID = actor.NewPID(msg.Addr, msg.ID)
 	case *actor.Terminated:
 		logs.LogError.Printf("actor terminated: %s", msg.Who.GetId())
 	}
