@@ -5,6 +5,7 @@ Package implements a binary for read serial portNmea nmea.
 package nmea
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -36,24 +37,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 	logs.LogBuild.Println("========== ======== ============")
 
 	chQuit := make(chan int, 0)
-	defer func() {
-		select {
-		case <-chQuit:
-		default:
-			close(chQuit)
-		}
-	}()
-
-	go func() {
-		select {
-		case <-chFinish:
-			select {
-			case <-chQuit:
-			default:
-				close(chQuit)
-			}
-		}
-	}()
+	defer close(chQuit)
 
 	re := regexp.MustCompile(`\$[a-zA-Z]+,`)
 
@@ -103,69 +87,6 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 		}
 	}()
 
-	chReset := make(chan int, 0)
-	chResetStop := make(chan int, 0)
-
-	timerModem := struct {
-		timer  *time.Timer
-		active bool
-	}{}
-
-	timerModem.timer = time.NewTimer(0)
-	if !timerModem.timer.Stop() {
-		select {
-		case <-timerModem.timer.C:
-		default:
-		}
-	}
-	timerModem.active = false
-
-	go func() {
-		defer close(chReset)
-		defer close(chResetStop)
-
-		for {
-			select {
-			case <-timerModem.timer.C:
-				timerModem.active = false
-				chResetStop <- 0
-			case v := <-chReset:
-				if v <= 0 {
-					logs.LogWarn.Println("modem reset timer off, with GPS data")
-					if !timerModem.timer.Stop() {
-						select {
-						case <-timerModem.timer.C:
-						default:
-						}
-					}
-					timerModem.active = false
-					break
-				}
-				if timerModem.active {
-					break
-				}
-				logs.LogWarn.Println("modem reset timer on, without GPS data")
-				if !timerModem.timer.Stop() {
-					select {
-					case <-timerModem.timer.C:
-					default:
-					}
-				}
-				timerModem.timer.Reset(time.Duration(v) * time.Second)
-				timerModem.active = true
-			case <-chQuit:
-				logs.LogWarn.Println("chQuit nil")
-				return
-			}
-		}
-	}()
-	modemVerify := func(value int) {
-		select {
-		case chReset <- value:
-		default:
-		}
-	}
-
 	funcListen := func() error {
 		// defer act.dev.Close()
 
@@ -195,15 +116,9 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 		tn := time.Now()
 		for {
 			select {
-			case _, ok := <-chResetStop:
-				if ok {
-					return fmt.Errorf("reset modem NMEA, timer stop")
-				}
-				logs.LogWarn.Println("reset modem NMEA, timer stop channel nil")
-				return nil
-			case <-chQuit:
-				logs.LogWarn.Println("chQuit nil funcListen in run")
-				return nil
+
+			case <-chFinish:
+				return errors.New("chQuit nil funcListen in run")
 			case <-tbadcount.C:
 				rateBad := float64(badFrameCount) / timeoutBadFrames.Minutes()
 				badgps := fmt.Sprintf("{\"timeStamp\": %d, \"value\": %.2f, \"type\": %q}", time.Now().Unix(), rateBad, "GPSERROR")
@@ -211,13 +126,8 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 				logs.LogInfo.Printf("last bad GPS frame -> %q", badFrames.raw)
 				logs.LogInfo.Printf("rate bad GPS -> %.2f", rateBad)
 				act.context.Send(act.pubsubPID, &msgBadGPS{data: badgps})
-			case <-tmax.C:
-				// if len(mapCaptures) <= 0 {
-				// 	break break_for
-				// }
-				if time.Now().Unix() > tn.Add(timeoutMax).Unix() {
-					return fmt.Errorf("reset modem NMEA, timeout read frame")
-				}
+			case <-time.After(60 * time.Second):
+				return fmt.Errorf("reset modem NMEA, timeout read frame")
 			case frame, ok := <-ch:
 				if !ok {
 					return fmt.Errorf("device channel error")
@@ -226,9 +136,6 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 				timeStamp := float64(tn.UnixNano()) / 1000000000
 				logs.LogBuild.Printf("frame: %s\n", frame)
 				if len(frame) > 34 {
-					if timerModem.active {
-						modemVerify(0)
-					}
 					gtype := re.FindString(frame)
 					if strings.Count(frame, "$") > 1 {
 						logs.LogWarn.Printf("frame bad format %s", frame)
@@ -241,15 +148,11 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 							sendDistance = false
 							if vg := gpsnmea.ParseGGA(frame); vg != nil {
 								if !isValidFrame(queue, vg) {
-									// logs.LogBuild.Printf("bad GPS frame -> %q", vg.Raw)
 									badFrames = &validFrame{timeStamp: vg.TimeStamp, raw: vg.Raw}
 									badFrameCount++
 									break
 								}
-
-								// mapCaptures["$GPGGA"] = fmt.Sprintf("{\"timeStamp\": %f, \"value\": %q, \"type\": %q}", timeStamp, frame, gtype[1:len(gtype)-1])
 								mapFrames["$GPGGA"] = &validFrame{raw: frame, timeStamp: vg.TimeStamp}
-								// act.context.Send(act.pubsubPID, &msgGPS{data: frame})
 
 								for k, v := range mapFrames {
 									if strings.Contains(v.timeStamp, vg.TimeStamp) {
@@ -293,11 +196,6 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 							}
 						}
 					}
-				} else {
-					// logs.LogWarn.Printf("frame bad format %s", frame)
-					if !timerModem.active {
-						modemVerify(1200)
-					}
 				}
 			}
 		}
@@ -310,9 +208,3 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 	logs.LogWarn.Printf("funcListen terminated in run nmea")
 	return nil
 }
-
-// func (act *actornmea) resetModem() {
-// 	logs.LogWarn.Printf()
-// 	act.context.Send(act.modemPID, &messages.ModemReset{})
-// 	//TODO:
-// }

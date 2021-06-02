@@ -129,7 +129,7 @@ func verifyHDOP(g1 *gpsnmea.Gpgga) *gpsnmea.Gpgga {
 	if g1 == nil {
 		return nil
 	}
-	if g1.HDop > 1.5 && g1.NumberSat < 6 {
+	if g1.HDop > 1.6 && g1.NumberSat < 5 {
 		return nil
 	}
 

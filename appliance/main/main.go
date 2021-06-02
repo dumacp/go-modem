@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -35,7 +36,7 @@ var reset bool
 const (
 	pathudev      = "/etc/udev/rules.d/local.rules"
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.19"
+	versionString = "1.0.21"
 )
 
 func init() {
@@ -108,7 +109,10 @@ func main() {
 	// remote.Start(fmt.Sprintf("127.0.0.1:%v", port),
 	// 	remote.WithAdvertisedAddress(fmt.Sprintf("localhost:%v", port)))
 
-	rootContext := actor.EmptyRootContext
+	rootContext := actor.NewActorSystem().Root
+
+	ctx := context.Background()
+	context.WithValue(ctx, "ROOTCONTEX", rootContext)
 
 	// var msgChan chan string
 	// pub, err := pubsub.NewConnection("go-netmodem")

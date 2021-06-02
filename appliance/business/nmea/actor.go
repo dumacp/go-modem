@@ -1,6 +1,7 @@
 package nmea
 
 import (
+	"strings"
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -64,8 +65,6 @@ func (act *actornmea) Run(ctx actor.Context) {
 		logs.LogWarn.Printf("nmea read stopped \"%s\"", ctx.Self().Id)
 		act.behavior.Become(act.Wait)
 		act.state = WaitState
-		//time.Sleep(3 * time.Second)
-		//panic(fmt.Errorf("msgStop arrive in nmea"))
 	case *messages.ModemReset:
 		logs.LogWarn.Printf("nmea msg modemReset")
 		select {
@@ -75,13 +74,27 @@ func (act *actornmea) Run(ctx actor.Context) {
 			logs.LogWarn.Printf("error stopping RUN nmea function")
 			act.behavior.Become(act.Wait)
 			act.state = WaitState
-			// panic("error stopping RUN nmea function")
 		}
 		logs.LogWarn.Printf("nmea read modemReset \"%s\"", ctx.Self().Id)
-
-		//time.Sleep(3 * time.Second)
-		//panic(fmt.Errorf("modemReset arrive in nmea"))
-		//ctx.Send(ctx.Self(), &msgStart{})
+	case *messages.ModemOnResponse:
+		logs.LogWarn.Printf("nmea modemOnResponse \"%s\"", msg)
+		if msg.State {
+			select {
+			case _, ok := <-act.chQuit:
+				if !ok {
+					logs.LogWarn.Printf("error chQuit in RUN nmea is closed")
+					panic("error chQuit in RUN nmea is closed")
+				}
+			default:
+				select {
+				case act.chQuit <- 1:
+				case <-time.After(10 * time.Second):
+				}
+			}
+			logs.LogInfo.Println("startfsm nmea")
+			act.fsm.Event(startEvent)
+			act.state = RunState
+		}
 	case *msgFatal:
 		logs.LogError.Printf("nmead read failed: %s", msg.err)
 		act.behavior.Become(act.Wait)
@@ -91,8 +104,6 @@ func (act *actornmea) Run(ctx actor.Context) {
 			logs.LogWarn.Printf("stopping RUN nmea function")
 		default:
 		}
-		//time.Sleep(3 * time.Second)
-		//panic(msg.err)
 	case *AddressModem:
 		act.modemPID = actor.NewPID(msg.Addr, msg.ID)
 	case *AddressPubSub:
@@ -124,10 +135,8 @@ func (act *actornmea) Wait(ctx actor.Context) {
 			select {
 			case _, ok := <-act.chQuit:
 				if !ok {
-					//act.chQuit = make(chan int, 0)
 					logs.LogWarn.Printf("error chQuit in RUN nmea is closed")
 					panic("error chQuit in RUN nmea is closed")
-					time.Sleep(3 * time.Second)
 				}
 			default:
 				select {
@@ -136,7 +145,6 @@ func (act *actornmea) Wait(ctx actor.Context) {
 				}
 			}
 			logs.LogInfo.Println("startfsm nmea")
-			// act.startfsm(act.chQuit)
 			act.fsm.Event(startEvent)
 			act.behavior.Become(act.Run)
 			act.state = RunState
@@ -154,7 +162,7 @@ func (act *actornmea) checkModem(chQuit chan int) {
 	tick := time.NewTicker(10 * time.Second)
 	defer tick.Stop()
 	for range tick.C {
-		if act.state == RunState {
+		if act.state == RunState && strings.Contains(act.fsm.Current(), sRun) {
 			continue
 		}
 		select {

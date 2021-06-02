@@ -130,12 +130,11 @@ func newIncCountErr() *incCountError {
 	return &incCountError{value: 10}
 }
 func (c *incCountError) get() int {
-	return c.value
-}
-func (c *incCountError) add() {
+	actual := c.value
 	if c.value <= 30 {
 		c.value += 3
 	}
+	return actual
 }
 func (c *incCountError) restart() {
 	c.value = 10
@@ -155,7 +154,7 @@ func (act *CheckModemActor) startfsm() {
 				case error:
 					err = x
 				default:
-					err = errors.New("Unknown panic")
+					err = errors.New("unknown panic")
 				}
 			}
 		}()
@@ -178,13 +177,12 @@ func (act *CheckModemActor) startfsm() {
 				}
 				if verifyModem(act.mSierra) != 0 {
 					if act.countError >= errInc.get() {
-						errInc.add()
 						act.fsm.Event(modemFailEvent)
-					} else {
-						act.countError++
-						time.Sleep(3 * time.Second)
-						act.fsm.Event(timeoutEvent)
+						break
 					}
+					act.countError++
+					time.Sleep(2 * time.Second)
+					act.fsm.Event(timeoutEvent)
 					break
 				}
 				act.fsm.Event(modemOKEvent)
@@ -208,7 +206,7 @@ func (act *CheckModemActor) startfsm() {
 					act.fsm.Event(timeoutEvent)
 					break
 				}
-				time.Sleep(3 * time.Second)
+				time.Sleep(2 * time.Second)
 				act.countWait++
 			case sReconnect:
 				errInc.restart()
@@ -223,10 +221,10 @@ func (act *CheckModemActor) startfsm() {
 							logs.LogWarn.Println("SIM is not OK!")
 						}
 						act.fsm.Event(connFailEvent)
-					} else {
-						act.countError++
-						time.Sleep(3 * time.Second)
+						break
 					}
+					act.countError++
+					time.Sleep(2 * time.Second)
 					break
 				}
 				act.fsm.Event(connOKEvent)
@@ -258,13 +256,17 @@ func (act *CheckModemActor) startfsm() {
 			case sReset:
 				func() {
 					defer func() {
-						if timeoutReset < 15*time.Minute {
+						if timeoutReset < 17*time.Minute {
 							timeoutReset = timeoutReset + 2*time.Minute
 						} else {
 							timeoutReset = 2 * time.Minute
 						}
 					}()
-					if act.lastReset.Add(timeoutReset).Unix() > time.Now().Unix() {
+					if act.resetCmd && act.lastReset.Add(timeoutReset).Unix() > time.Now().Unix() {
+						act.fsm.Event(timeoutEvent)
+						return
+					}
+					if !act.resetCmd && act.lastReset.Add(timeoutReset+10*time.Minute).Unix() > time.Now().Unix() {
 						act.fsm.Event(timeoutEvent)
 						return
 					}
@@ -288,7 +290,6 @@ func (act *CheckModemActor) startfsm() {
 					}
 				}
 				act.lastReset = time.Now()
-				time.Sleep(3 * time.Second)
 				act.fsm.Event(resetEvent)
 			case sWaitModem2:
 				switch verifyModem(act.mSierra) {
@@ -296,7 +297,6 @@ func (act *CheckModemActor) startfsm() {
 					act.fsm.Event(modemOKEvent)
 				default:
 					if act.countError >= errInc.get() {
-						errInc.add()
 						act.fsm.Event(modemFailEvent)
 					} else {
 						act.countError++
@@ -329,6 +329,7 @@ func (act *CheckModemActor) startfsm() {
 			default:
 				time.Sleep(3 * time.Second)
 			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 	go func() {

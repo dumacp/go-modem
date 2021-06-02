@@ -1,6 +1,7 @@
 package pubsub
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -36,10 +37,12 @@ type pubsubActor struct {
 	client        mqtt.Client
 	mux           sync.Mutex
 	subscriptions map[string]*subscribeMSG
+	rootctx       actor.Context
 }
 
 var instance *pubsubActor
 var once sync.Once
+var rootctx *actor.RootContext
 
 //getInstance create pubsub Gateway
 func getInstance() *pubsubActor {
@@ -48,9 +51,15 @@ func getInstance() *pubsubActor {
 		instance = &pubsubActor{}
 		instance.mux = sync.Mutex{}
 		instance.subscriptions = make(map[string]*subscribeMSG)
-		ctx := actor.EmptyRootContext
+		if rootctx == nil {
+			ctx := context.Background()
+			rootctx = ctx.Value("ROOTCONTEXT").(*actor.RootContext)
+			if rootctx == nil {
+				rootctx = actor.NewActorSystem().Root
+			}
+		}
 		props := actor.PropsFromFunc(instance.Receive)
-		_, err := ctx.SpawnNamed(props, "pubsub-actor")
+		_, err := rootctx.SpawnNamed(props, "pubsub-actor")
 		if err != nil {
 			logs.LogError.Panic(err)
 		}
@@ -59,7 +68,8 @@ func getInstance() *pubsubActor {
 }
 
 //Init init pubsub instance
-func Init() error {
+func Init(ctx *actor.RootContext) error {
+	rootctx = ctx
 	defer time.Sleep(3 * time.Second)
 	if getInstance() == nil {
 		return fmt.Errorf("error instance")

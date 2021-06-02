@@ -22,7 +22,8 @@ type pubsubActor struct {
 }
 
 //NewService create Service actor
-func NewService() Gateway {
+func NewService(ctx *actor.RootContext) Gateway {
+	svc.Init(ctx)
 	act := &pubsubActor{svc: svc.GetInstance()}
 	return act
 }

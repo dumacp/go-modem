@@ -17,6 +17,7 @@ const (
 	sRun     = "sRun"
 	sReset   = "sReset"
 	sStop    = "sStop"
+	sClose   = "sClose"
 )
 
 const (
@@ -43,13 +44,13 @@ func (act *actornmea) initFSM() {
 	act.fsm = fsm.NewFSM(
 		sStart,
 		fsm.Events{
-			{Name: startEvent, Src: []string{sStart, sStop}, Dst: sConnect},
+			{Name: startEvent, Src: []string{sStart, sStop, sClose}, Dst: sConnect},
 			{Name: connectOKEvent, Src: []string{sConnect}, Dst: sRun},
 			{Name: connectFailEvent, Src: []string{sConnect}, Dst: sReset},
 			{Name: timeoutEvent, Src: []string{sConnect}, Dst: sConnect},
-			{Name: readFailEvent, Src: []string{sRun}, Dst: sReset},
+			{Name: readFailEvent, Src: []string{sRun}, Dst: sClose},
 			{Name: readStopEvent, Src: []string{sStart, sRun, sConnect}, Dst: sStop},
-			{Name: resetEvent, Src: []string{sReset}, Dst: sConnect},
+			{Name: resetEvent, Src: []string{sReset}, Dst: sStop},
 		},
 		fsm.Callbacks{
 			"enter_state": func(e *fsm.Event) {
@@ -103,15 +104,15 @@ func (act *actornmea) startfsm(chQuit chan int) {
 			case sConnect:
 				act.dev.Close()
 				if err := act.dev.Open(); err != nil {
+					countFail++
 					logs.LogWarn.Println(err)
 					time.Sleep(3 * time.Second)
 					if countFail > 2 {
 						act.context.Send(act.context.Self(), &msgStop{})
-						act.fsm.Event(readStopEvent)
-					} else {
-						countFail++
 						act.fsm.Event(connectFailEvent)
+						break
 					}
+					act.fsm.Event(timeoutEvent)
 					break
 				}
 				countFail = 0
@@ -131,13 +132,15 @@ func (act *actornmea) startfsm(chQuit chan int) {
 						act.fsm.Event(readFailEvent)
 						return
 					}
-					act.context.Send(act.context.Self(), &msgStop{})
-					act.fsm.Event(readStopEvent)
 				}
 				funcRun()
 				logs.LogWarn.Println("stop run function in nmea")
+			case sClose:
+				if act.dev != nil {
+					act.dev.Close()
+				}
+				act.fsm.Event(startEvent)
 			case sStop:
-				time.Sleep(3 * time.Second)
 				countFail++
 				if countFail > 30 {
 					act.fsm.Event(startEvent)
@@ -146,6 +149,7 @@ func (act *actornmea) startfsm(chQuit chan int) {
 			default:
 				time.Sleep(3 * time.Second)
 			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 	go func() {

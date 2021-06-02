@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -46,10 +47,15 @@ func main() {
 	flag.Parse()
 	initLogs(debug)
 
-	remote.Start(fmt.Sprintf("127.0.0.1:%v", port),
-		remote.WithAdvertisedAddress(fmt.Sprintf("localhost:%v", port)))
+	system := actor.NewActorSystem()
 
-	rootContext := actor.EmptyRootContext
+	config := remote.Configure("127.0.0.1", port).WithAdvertisedHost(fmt.Sprintf("localhost:%v", port))
+
+	remote.NewRemote(system, config).Start()
+
+	rootContext := system.Root
+	ctx := context.Background()
+	context.WithValue(ctx, "ROOTCONTEXT", rootContext)
 
 	// var msgChan chan string
 	// pub, err := pubsub.NewConnection("go-netmodem")
