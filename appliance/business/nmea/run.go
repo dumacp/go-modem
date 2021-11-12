@@ -18,6 +18,7 @@ import (
 const (
 	timeoutMax       = 30 * time.Second
 	timeoutBadFrames = 10 * time.Minute
+	badframeUmbral   = 29
 )
 
 var filter = []string{"$GPRMC", "$GPGGA"}
@@ -36,7 +37,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 	logs.LogBuild.Println("========== RUN NMEA ============")
 	logs.LogBuild.Println("========== ======== ============")
 
-	chQuit := make(chan int, 0)
+	chQuit := make(chan int)
 	defer close(chQuit)
 
 	re := regexp.MustCompile(`\$[a-zA-Z]+,`)
@@ -122,10 +123,14 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 			case <-tbadcount.C:
 				rateBad := float64(badFrameCount) / timeoutBadFrames.Minutes()
 				badgps := fmt.Sprintf("{\"timeStamp\": %d, \"value\": %.2f, \"type\": %q}", time.Now().Unix(), rateBad, "GPSERROR")
-				badFrameCount = 0
+
 				logs.LogInfo.Printf("last bad GPS frame -> %q", badFrames.raw)
 				logs.LogInfo.Printf("rate bad GPS -> %.2f", rateBad)
 				act.context.Send(act.pubsubPID, &msgBadGPS{data: badgps})
+				if rateBad > badframeUmbral {
+					return fmt.Errorf("reset modem NMEA, %w, umbral: %d", umbralError, badframeUmbral)
+				}
+				badFrameCount = 0
 			case <-time.After(60 * time.Second):
 				return fmt.Errorf("reset modem NMEA, timeout read frame")
 			case frame, ok := <-ch:
@@ -195,7 +200,13 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 								}
 							}
 						}
+					} else {
+						badFrames = &validFrame{timeStamp: "", raw: frame}
+						badFrameCount++
 					}
+				} else {
+					badFrames = &validFrame{timeStamp: "", raw: frame}
+					badFrameCount++
 				}
 			}
 		}

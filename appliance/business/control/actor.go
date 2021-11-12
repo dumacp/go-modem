@@ -41,13 +41,15 @@ const (
 	ipTestInitial = "8.8.8.8"
 )
 
-func NewCheckModemActor(debug bool, reset bool, port string) actor.Actor {
+func NewCheckModemActor(debug bool, reset bool, port, iptest, apn string) actor.Actor {
 	//initLogs(debug)
 	act := &CheckModemActor{
 		behavior: actor.NewBehavior(),
 	}
 	act.debug = debug
 	act.disableReset = reset
+	act.apn = apn
+	act.testIP = iptest
 	act.mSierra = newModem(port)
 	act.remotesPID = make(map[string]*actor.PID)
 	act.initFSM()

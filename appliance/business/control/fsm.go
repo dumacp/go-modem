@@ -112,7 +112,7 @@ func (act *CheckModemActor) initFSM() {
 			enterState(sWait): func(e *fsm.Event) {
 				act.countWait = 0
 			},
-			enterState(sReset): func(e *fsm.Event) {
+			leaveState(sReset): func(e *fsm.Event) {
 				act.resetCmd = false
 			},
 			enterState(sPowerOff): func(e *fsm.Event) {

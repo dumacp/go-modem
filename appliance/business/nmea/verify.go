@@ -2,6 +2,7 @@ package nmea
 
 import (
 	"container/list"
+	"flag"
 	"fmt"
 	"sync"
 	"time"
@@ -9,6 +10,14 @@ import (
 	"github.com/dumacp/gpsnmea"
 	"github.com/golang/geo/s2"
 )
+
+var maxAltitude int
+var minAltitude int
+
+func init() {
+	flag.IntVar(&maxAltitude, "maxAltitude", 3500, "max altitude in meters")
+	flag.IntVar(&minAltitude, "minAltitude", -10, "min altitude in meters")
+}
 
 type queue struct {
 	mux  sync.Mutex
@@ -45,8 +54,8 @@ type frameElem struct {
 func isValidFrame(q *queue, frame *gpsnmea.Gpgga) bool {
 
 	v1 := verifyHDOP(frame)
-	v2 := verifySatellites(v1)
-	v3 := verifyAltitude(v2)
+	//v2 := verifySatellites(v1)
+	v3 := verifyAltitude(v1)
 	v4 := verifyDistance(q, v3)
 
 	if v4 != nil {
@@ -129,7 +138,7 @@ func verifyHDOP(g1 *gpsnmea.Gpgga) *gpsnmea.Gpgga {
 	if g1 == nil {
 		return nil
 	}
-	if g1.HDop > 1.6 && g1.NumberSat < 5 {
+	if g1.HDop > 1.5 && g1.NumberSat < 5 {
 		return nil
 	}
 
@@ -154,10 +163,10 @@ func verifyAltitude(g1 *gpsnmea.Gpgga) *gpsnmea.Gpgga {
 	if g1 == nil {
 		return nil
 	}
-	if g1.Altitude > 3500 {
+	if g1.Altitude > float64(maxAltitude) {
 		return nil
 	}
-	if g1.Altitude < 1300 {
+	if g1.Altitude < float64(minAltitude) {
 		return nil
 	}
 	return g1

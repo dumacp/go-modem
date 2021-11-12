@@ -46,7 +46,7 @@ func (act *actornmea) initFSM() {
 		fsm.Events{
 			{Name: startEvent, Src: []string{sStart, sStop, sClose}, Dst: sConnect},
 			{Name: connectOKEvent, Src: []string{sConnect}, Dst: sRun},
-			{Name: connectFailEvent, Src: []string{sConnect}, Dst: sReset},
+			{Name: connectFailEvent, Src: []string{sConnect, sRun}, Dst: sReset},
 			{Name: timeoutEvent, Src: []string{sConnect}, Dst: sConnect},
 			{Name: readFailEvent, Src: []string{sRun}, Dst: sClose},
 			{Name: readStopEvent, Src: []string{sStart, sRun, sConnect}, Dst: sStop},
@@ -82,7 +82,7 @@ func (act *actornmea) startfsm(chQuit chan int) {
 				case error:
 					errx = x
 				default:
-					errx = errors.New("Unknown panic")
+					errx = errors.New("unknown panic")
 				}
 			}
 		}()
@@ -129,7 +129,13 @@ func (act *actornmea) startfsm(chQuit chan int) {
 						case <-chQuit:
 						default:
 						}
-						act.fsm.Event(readFailEvent)
+						switch {
+						case errors.Is(err, umbralError):
+							act.fsm.Event(connectFailEvent)
+						default:
+							act.fsm.Event(readFailEvent)
+						}
+
 						return
 					}
 				}

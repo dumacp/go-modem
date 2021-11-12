@@ -5,14 +5,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/dumacp/go-modem/appliance/business/control"
-	"github.com/dumacp/go-modem/appliance/business/messages"
 	"github.com/dumacp/go-modem/appliance/business/nmea"
 	"github.com/dumacp/go-modem/appliance/crosscutting/logs"
 )
@@ -36,7 +37,7 @@ var reset bool
 const (
 	pathudev      = "/etc/udev/rules.d/local.rules"
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.21"
+	versionString = "1.0.27"
 )
 
 func init() {
@@ -50,6 +51,8 @@ func init() {
 	flag.IntVar(&baudRate, "baudRate", 115200, "baud rate to capture nmea's frames.")
 	flag.StringVar(&portNmea, "portNmea", "/dev/ttyGPS", "device serial to read.")
 	flag.StringVar(&portModem, "portModem", "/dev/ttyMODEM", "device serial to conf modem.")
+	flag.StringVar(&apnConn, "apn", "", "APN net")
+	flag.StringVar(&ipTest, "testip", ipTestInitial, "test IP (ping test connection)")
 	flag.IntVar(&distanceMin, "distance", 30, "minimun distance traveled before to send")
 }
 
@@ -61,6 +64,25 @@ func main() {
 		os.Exit(2)
 	}
 	initLogs(debug, logstd)
+
+	if strings.ContainsAny(ipTest, ipTestInitial) ||
+		len(apnConn) <= 0 {
+		if testIP, err := getTestIP(); err == nil {
+			log.Printf("new testIP from ENV: %q", testIP)
+			ipTest = testIP
+		}
+		if apn, err := getAPN(); err == nil {
+			log.Printf("new APN from ENV: %q", apn)
+			apnConn = apn
+		}
+		// if err1 == nil || err2 == nil {
+
+		// 	rootContext.Send(pidCheck, &messages.ModemCheck{
+		// 		Addr: testIP,
+		// 		Apn:  apn,
+		// 	})
+		// }
+	}
 
 	if portNmea == "/dev/ttyGPS" {
 		if fileenv, err := os.Open(pathudev); err != nil {
@@ -159,7 +181,7 @@ func main() {
 				distanceMin,
 			)
 			propsNmea := actor.PropsFromFunc(nmeaA.Receive)
-			controlA := control.NewCheckModemActor(debug, reset, portModem)
+			controlA := control.NewCheckModemActor(debug, reset, portModem, ipTest, apnConn)
 			propsCheck := actor.PropsFromFunc(controlA.Receive)
 			pidNmea, err := c.SpawnNamed(propsNmea, "nmeaGPS")
 			if err != nil {
@@ -189,6 +211,7 @@ func main() {
 	if err != nil {
 		logs.LogError.Fatalln(err)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	// funcModemAddr := func(msg *messRecepcionist.SubscribeAdvertising) {
 	// 	log.Printf("receive Advertising: %v\n", msg)
@@ -214,15 +237,6 @@ func main() {
 	// })
 	// rootContext.Send(pid, &messages.TestIP{Addr: "127.0.0.1"})
 
-	testIP, err1 := getTestIP()
-	apn, err2 := getAPN()
-	if err1 == nil || err2 == nil {
-		rootContext.Send(pidCheck, &messages.ModemCheck{
-			Addr: testIP,
-			Apn:  apn,
-		})
-	}
-
 	finish := make(chan os.Signal, 1)
 	signal.Notify(finish, syscall.SIGINT)
 	signal.Notify(finish, syscall.SIGTERM)
@@ -242,10 +256,15 @@ func getTestIP() (string, error) {
 	if len(testIP) <= 0 {
 		return "", fmt.Errorf("TEST_IP not found")
 	}
-	if strings.Contains(ipTest, testIP) {
+	// varSplit := strings.Split(testIP, " ")
+	// if len(varSplit) <= 0 {
+	// 	return "", fmt.Errorf("TEST_IP not found")
+	// }
+	// testIP = varSplit[0]
+	if strings.Contains(testIP, ipTest) && len(ipTest) > 0 {
 		return "", fmt.Errorf("already testIP")
 	}
-	ipTest = testIP
+	// ipTest = testIP
 	return testIP, nil
 }
 
@@ -254,9 +273,15 @@ func getAPN() (string, error) {
 	if len(apn) <= 0 {
 		return "", fmt.Errorf("APN not found")
 	}
-	if strings.Contains(apn, apnConn) {
+	// varSplit := strings.Split(apn, " ")
+	// if len(varSplit) <= 0 {
+	// 	return "", fmt.Errorf("APN not found")
+	// }
+	// apn = varSplit[0]
+	// log.Printf("new APN from ENV: %q", apn)
+	if strings.Contains(apn, apnConn) && len(apnConn) > 0 {
 		return "", fmt.Errorf("already APN")
 	}
-	apnConn = apn
+	// apnConn = apn
 	return apn, nil
 }

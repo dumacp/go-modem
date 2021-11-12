@@ -43,24 +43,48 @@ func NewNmeaActor(debug bool, portNmea string, baudRate, timeout, distanceMin in
 	act.baudRate = baudRate
 	act.distanceMin = distanceMin
 	act.initFSM()
-	act.chQuit = make(chan int, 0)
-	act.startfsm(act.chQuit)
+
+	// act.startfsm(act.chQuit)
 	act.behavior.Become(act.Wait)
 	act.state = WaitState
-	act.chQuitTick = make(chan int, 0)
+	act.chQuitTick = make(chan int)
 	go act.checkModem(act.chQuitTick)
 	return act
 }
 
 func (act *actornmea) Receive(ctx actor.Context) {
 	act.context = ctx
+	switch ctx.Message().(type) {
+	case *actor.Started:
+		logs.LogInfo.Printf("actor started \"%s\"", ctx.Self().Id)
+
+		propsPubSub := actor.PropsFromFunc(NewPubSubActor(act.debug).Receive)
+		pidPubSub, err := ctx.SpawnNamed(propsPubSub, "nmeaPubSub")
+		if err != nil {
+			time.Sleep(3 * time.Second)
+			logs.LogError.Panic(err)
+		}
+		act.pubsubPID = pidPubSub
+		ctx.Watch(pidPubSub)
+		act.chQuit = make(chan int)
+		act.startfsm(act.chQuit)
+	case *actor.Stopping:
+		select {
+		case act.chQuit <- 1:
+		case <-time.After(10 * time.Second):
+		}
+		close(act.chQuit)
+		if act.pubsubPID != nil {
+			ctx.Poison(act.pubsubPID)
+		}
+		logs.LogInfo.Printf("actor stopping \"%s\"", ctx.Self().Id)
+	}
 	act.behavior.Receive(ctx)
 }
 
 func (act *actornmea) Run(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
-	case *actor.Stopping:
-		logs.LogInfo.Printf("actor stopping \"%s\"", ctx.Self().Id)
+
 	case *msgStop:
 		logs.LogWarn.Printf("nmea read stopped \"%s\"", ctx.Self().Id)
 		act.behavior.Become(act.Wait)
@@ -102,7 +126,7 @@ func (act *actornmea) Run(ctx actor.Context) {
 		select {
 		case act.chQuit <- 1:
 			logs.LogWarn.Printf("stopping RUN nmea function")
-		default:
+		case <-time.After(10 * time.Second):
 		}
 	case *AddressModem:
 		act.modemPID = actor.NewPID(msg.Addr, msg.ID)
@@ -115,20 +139,7 @@ func (act *actornmea) Run(ctx actor.Context) {
 
 func (act *actornmea) Wait(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
-	case *actor.Started:
-		logs.LogInfo.Printf("actor started \"%s\"", ctx.Self().Id)
 
-		propsPubSub := actor.PropsFromFunc(NewPubSubActor(act.debug).Receive)
-		pidPubSub, err := ctx.SpawnNamed(propsPubSub, "nmeaPubSub")
-		if err != nil {
-			time.Sleep(3 * time.Second)
-			logs.LogError.Panic(err)
-		}
-		act.pubsubPID = pidPubSub
-		ctx.Watch(pidPubSub)
-
-	case *actor.Stopping:
-		logs.LogInfo.Printf("actor stopping \"%s\"", ctx.Self().Id)
 	case *messages.ModemOnResponse:
 		logs.LogWarn.Printf("nmea modemOnResponse \"%s\"", msg)
 		if msg.State {
