@@ -34,8 +34,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 	default:
 	}
 
-	logs.LogBuild.Println("========== RUN NMEA ============")
-	logs.LogBuild.Println("========== ======== ============")
+	fmt.Println("========== RUN NMEA ============")
 
 	chQuit := make(chan int)
 	defer close(chQuit)
@@ -61,7 +60,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 			select {
 			case <-chDist:
 				for _, v := range mapCaptures {
-					logs.LogBuild.Printf("distance, EVENT -> %s\n", v)
+					fmt.Printf("distance, EVENT -> %s\n", v)
 					act.context.Send(act.pubsubPID, &eventGPS{event: v})
 				}
 				mapCaptures = make(map[string]string)
@@ -74,7 +73,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 				t1.Reset(time.Duration(timeout) * time.Second)
 			case <-t1.C:
 				for _, v := range mapCaptures {
-					logs.LogBuild.Printf("timeout, EVENT -> %s\n", v)
+					fmt.Printf("timeout, EVENT -> %s\n", v)
 					lat0 = lat0_t
 					long0 = long0_t
 					act.context.Send(act.pubsubPID, &eventGPS{event: v})
@@ -124,8 +123,8 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 				rateBad := float64(badFrameCount) / timeoutBadFrames.Minutes()
 				badgps := fmt.Sprintf("{\"timeStamp\": %d, \"value\": %.2f, \"type\": %q}", time.Now().Unix(), rateBad, "GPSERROR")
 
-				logs.LogInfo.Printf("last bad GPS frame -> %q", badFrames.raw)
-				logs.LogInfo.Printf("rate bad GPS -> %.2f", rateBad)
+				fmt.Printf("last bad GPS frame -> %q\n", badFrames.raw)
+				fmt.Printf("rate bad GPS -> %.2f\n", rateBad)
 				act.context.Send(act.pubsubPID, &msgBadGPS{data: badgps})
 				if rateBad > badframeUmbral {
 					return fmt.Errorf("reset modem NMEA, %w, umbral: %d", umbralError, badframeUmbral)
@@ -139,7 +138,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 				}
 				tn = time.Now()
 				timeStamp := float64(tn.UnixNano()) / 1000000000
-				logs.LogBuild.Printf("frame: %s\n", frame)
+				fmt.Printf("frame: %s\n", frame)
 				if len(frame) > 34 {
 					gtype := re.FindString(frame)
 					if strings.Count(frame, "$") > 1 {
@@ -170,7 +169,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 								lat1 := gpsnmea.LatLongToDecimalDegree(vg.Lat, vg.LatCord)
 								distance := gpsnmea.Distance(lat0, long0, lat1, long1, "K")
 								if distance > float64(distanceMin)*0.90/1000 {
-									logs.LogBuild.Printf("distance: %v K\n", distance)
+									fmt.Printf("distance: %v K\n", distance)
 									long0 = long1
 									lat0 = lat1
 									sendDistance = true
@@ -195,7 +194,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 								//verify last verify distance
 								if sendDistance {
 									sendDistance = false
-									logs.LogBuild.Printf("distance, EVENT -> %s\n", mssg)
+									// logs.LogBuild.Printf("distance, EVENT -> %s\n", mssg)
 									// act.context.Send(act.pubsubPID, &eventGPS{event: mssg})
 								}
 							}
@@ -210,6 +209,7 @@ func (act *actornmea) run(chFinish chan int, timeout, distanceMin int) error {
 				}
 			}
 		}
+		return errors.New("stop funcListen")
 	}
 	err := funcListen()
 	if err != nil {
