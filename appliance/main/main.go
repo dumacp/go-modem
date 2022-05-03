@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/go-modem/appliance/business/control"
 	"github.com/dumacp/go-modem/appliance/business/nmea"
-	"github.com/dumacp/go-modem/appliance/crosscutting/logs"
 )
 
 var debug bool
@@ -65,7 +65,7 @@ func main() {
 	}
 	initLogs(debug, logstd)
 
-	if strings.ContainsAny(ipTest, ipTestInitial) ||
+	if strings.Contains(ipTest, ipTestInitial) ||
 		len(apnConn) <= 0 {
 		if testIP, err := getTestIP(); err == nil {
 			log.Printf("new testIP from ENV: %q", testIP)

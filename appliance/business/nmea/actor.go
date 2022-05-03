@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/go-modem/appliance/business/messages"
-	"github.com/dumacp/go-modem/appliance/crosscutting/logs"
 	"github.com/dumacp/gpsnmea"
 	"github.com/looplab/fsm"
 )

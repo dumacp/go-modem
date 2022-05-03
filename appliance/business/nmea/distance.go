@@ -1,7 +1,7 @@
 package nmea
 
 import (
-	"github.com/dumacp/go-modem/appliance/crosscutting/logs"
+	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/gpsnmea"
 )
 

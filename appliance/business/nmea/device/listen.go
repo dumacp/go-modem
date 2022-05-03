@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dumacp/go-modem/appliance/crosscutting/logs"
+	"github.com/dumacp/go-logs/pkg/logs"
 )
 
 var filter = []string{"$GPRMC", "$GPGGA"}

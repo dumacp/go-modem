@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/go-modem/appliance/business/messages"
 	"github.com/dumacp/go-modem/appliance/business/nmea/process"
-	"github.com/dumacp/go-modem/appliance/crosscutting/logs"
 	"github.com/looplab/fsm"
 	"github.com/tarm/serial"
 )
