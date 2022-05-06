@@ -1,0 +1,45 @@
+syntax = "proto3";
+package messages;
+// import "github.com/AsynkronIT/protoactor-go/actor/protos.proto";
+
+message Start {}
+
+message Stop {}
+
+message Restart {}
+
+message StatusRequest {
+    string Sender = 1;
+}
+message StatusResponse {
+    enum StateType {
+        STARTED = 0;
+        STOPPED = 1;
+        UNKNOWN = 2;
+    }
+    StateType State = 1;
+}
+
+message ModemAddrRequest {}
+message ModemOnRequest {
+	string Sender = 1;
+}
+message ModemAddr {
+	string Addr = 1;
+	string Id = 2;
+}
+message ModemOnResponse {
+	bool State = 1;
+}
+message ModemReset {}
+message ModemPowerOff {}
+message ModemConect {
+	string Apn = 1;
+}
+message ModemConectResponse {
+	bool status = 1;
+}
+message ModemCheck {
+	string Addr = 1;
+	string Apn = 2;
+}

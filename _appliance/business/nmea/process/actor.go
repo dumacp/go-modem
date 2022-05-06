@@ -35,7 +35,7 @@ type actorprocess struct {
 	countValidFrames int
 }
 
-func NewActor(debug bool, portNmea string, baudRate, timeout, distanceMin int) actor.Actor {
+func NewActor(timeout, distanceMin int) actor.Actor {
 	//initLogs(debug)
 	act := &actorprocess{}
 
