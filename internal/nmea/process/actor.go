@@ -35,8 +35,10 @@ type actorprocess struct {
 	lastFrames         map[string]*processedData
 	lastBad            string
 	queue              *queue
+	lastInvalidFrames  time.Time
 	countInvalidFrames int
-	quit               chan int
+
+	quit chan int
 }
 
 func NewActor(timeout, distanceMin int) actor.Actor {
@@ -53,6 +55,7 @@ func (a *actorprocess) Receive(ctx actor.Context) {
 		logs.LogInfo.Printf("actor started \"%s\"", ctx.Self().Id)
 		a.lastFrames = make(map[string]*processedData)
 		a.lastSendFrames = make(map[string]*processedData)
+		a.lastInvalidFrames = time.Now().Add(-30 * time.Minute)
 		a.queue = NewQueue()
 		if a.quit != nil {
 			select {
@@ -181,7 +184,8 @@ func (a *actorprocess) Receive(ctx actor.Context) {
 		}(); err != nil {
 			fmt.Println(err)
 			a.countInvalidFrames++
-			if a.countInvalidFrames%5 == 0 {
+			if time.Since(a.lastInvalidFrames) > 5*time.Minute {
+				a.lastInvalidFrames = time.Now()
 				logs.LogWarn.Println(err)
 			}
 			a.lastBad = msg.Data
