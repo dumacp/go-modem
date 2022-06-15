@@ -92,7 +92,7 @@ func (a *actornmea) startfsm(chQuit chan int) {
 
 		current := ""
 
-		portReadTimeout := 10 * time.Second
+		portReadTimeout := 3 * time.Second
 		var port *serial.Port
 
 		var reader *bufio.Reader
@@ -143,9 +143,10 @@ func (a *actornmea) startfsm(chQuit chan int) {
 				case sRun:
 					data, err := listen(reader)
 					if err != nil {
-						logs.LogWarn.Println(err)
+
 						countFail++
 						if countFail > 6 {
+							logs.LogWarn.Printf("error listen port: %s", err)
 							a.fsm.Event(connectFailEvent)
 						}
 						break
@@ -162,7 +163,6 @@ func (a *actornmea) startfsm(chQuit chan int) {
 					if a.processPID != nil {
 						a.context.Send(a.processPID, &process.MsgData{Data: data})
 					}
-
 				case sClose:
 					a.fsm.Event(startEvent)
 				case sStop:
@@ -172,9 +172,9 @@ func (a *actornmea) startfsm(chQuit chan int) {
 						countFail = 0
 					}
 				default:
-					time.Sleep(3 * time.Second)
+					time.Sleep(1 * time.Second)
 				}
-				time.Sleep(1 * time.Second)
+				time.Sleep(30 * time.Millisecond)
 			}
 		}
 	}

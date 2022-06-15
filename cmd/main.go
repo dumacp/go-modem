@@ -17,6 +17,7 @@ import (
 	"github.com/dumacp/go-modem/internal/control"
 	"github.com/dumacp/go-modem/internal/nmea/device"
 	"github.com/dumacp/go-modem/internal/nmea/process"
+	"github.com/dumacp/go-modem/internal/pubsub"
 )
 
 var debug bool
@@ -38,7 +39,7 @@ var reset bool
 const (
 	pathudev      = "/etc/udev/rules.d/local.rules"
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.28"
+	versionString = "1.0.35"
 )
 
 func init() {
@@ -124,8 +125,9 @@ func main() {
 	rootContext := actor.NewActorSystem().Root
 
 	ctx := context.Background()
-	context.WithValue(ctx, "ROOTCONTEX", rootContext)
+	context.WithValue(ctx, "ROOTCONTEXT", rootContext)
 
+	pubsub.Init(rootContext)
 	// pidCheck := &actor.PID{}
 
 	props := actor.PropsFromFunc(func(c actor.Context) {

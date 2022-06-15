@@ -7,5 +7,5 @@ type MsgTick struct {
 }
 type MsgSendFrame struct {
 	Topic string
-	Data  *processedData
+	Data  []byte
 }

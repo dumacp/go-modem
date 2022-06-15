@@ -35,6 +35,7 @@ type processedData struct {
 	lgt       float64
 	distance  float64
 	timeStamp time.Time
+	timeDate  time.Time
 	valided   bool
 }
 
@@ -67,7 +68,8 @@ func processData(frame string, prefix string, distanceMin int,
 				lat:       lat1,
 				lgt:       long1,
 				valided:   true,
-				timeStamp: t0,
+				timeDate:  t0,
+				timeStamp: time.Now(),
 				distance:  distance,
 			}, nil
 			// }
@@ -99,7 +101,8 @@ func processData(frame string, prefix string, distanceMin int,
 				lat:       lat1,
 				lgt:       long1,
 				valided:   true,
-				timeStamp: t0,
+				timeDate:  t0,
+				timeStamp: time.Now(),
 				distance:  distance,
 			}, nil
 			// }

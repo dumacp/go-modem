@@ -36,7 +36,7 @@ type pubsubActor struct {
 	client        mqtt.Client
 	mux           sync.Mutex
 	subscriptions map[string]*subscribeMSG
-	// rootctx       actor.Context
+	rootctx       actor.Context
 }
 
 var instance *pubsubActor
@@ -52,16 +52,17 @@ func getInstance() *pubsubActor {
 		instance.subscriptions = make(map[string]*subscribeMSG)
 		if rootctx == nil {
 			ctx := context.Background()
-			rootctx = ctx.Value("ROOTCONTEXT").(*actor.RootContext)
+			rootctx, _ = ctx.Value("ROOTCONTEXT").(*actor.RootContext)
 			if rootctx == nil {
 				rootctx = actor.NewActorSystem().Root
 			}
 		}
 		props := actor.PropsFromFunc(instance.Receive)
-		_, err := rootctx.SpawnNamed(props, "pubsub-actor")
+		pid, err := rootctx.SpawnNamed(props, "pubsub-actor")
 		if err != nil {
 			logs.LogError.Panic(err)
 		}
+		rootctx.RequestFuture(pid, &ping{}, 1*time.Second).Wait()
 	})
 	return instance
 }
@@ -69,7 +70,7 @@ func getInstance() *pubsubActor {
 //Init init pubsub instance
 func Init(ctx *actor.RootContext) error {
 	rootctx = ctx
-	defer time.Sleep(3 * time.Second)
+	defer time.Sleep(1 * time.Second)
 	if getInstance() == nil {
 		return fmt.Errorf("error instance")
 	}
@@ -80,6 +81,8 @@ type publishMSG struct {
 	topic string
 	msg   []byte
 }
+type ping struct{}
+type pong struct{}
 
 type subscribeMSG struct {
 	pid   *actor.PID
@@ -138,11 +141,15 @@ func (ps *pubsubActor) Receive(ctx actor.Context) {
 		for k, v := range ps.subscriptions {
 			ps.subscribe(k, v)
 		}
+	case *ping:
+		if ctx.Sender() != nil {
+			ctx.Respond(&pong{})
+		}
 	case *publishMSG:
 		tk := ps.client.Publish(msg.topic, 0, false, msg.msg)
 		if !tk.WaitTimeout(3 * time.Second) {
 			if tk.Error() != nil {
-				logs.LogError.Printf("end error: %s, with messages -> %v", msg)
+				logs.LogError.Printf("end error: %s, with messages -> %v", tk.Error(), msg)
 			} else {
 				logs.LogError.Printf("timeout error with message -> %v", msg)
 			}
