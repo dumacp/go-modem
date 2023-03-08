@@ -2,6 +2,8 @@ package pubsub
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -12,7 +14,7 @@ import (
 )
 
 const (
-	clientID       = "ignition"
+	clientID       = "modem"
 	TopicAppliance = "appliance/modem"
 	TopicEvents    = "EVENTS/modem"
 	//TopicEvents           = TopicAppliance + "/events"
@@ -151,7 +153,7 @@ func (ps *pubsubActor) Receive(ctx actor.Context) {
 			if tk.Error() != nil {
 				logs.LogError.Printf("end error: %s, with messages -> %v", tk.Error(), msg)
 			} else {
-				logs.LogError.Printf("timeout error with message -> %v", msg)
+				logs.LogError.Printf("timeout error with message -> %s", msg)
 			}
 		}
 	case *actor.Stopping:
@@ -177,7 +179,9 @@ func (ps *pubsubActor) Receive(ctx actor.Context) {
 func client() mqtt.Client {
 	opt := mqtt.NewClientOptions().AddBroker("tcp://127.0.0.1:1883")
 	opt.SetAutoReconnect(true)
-	opt.SetClientID(fmt.Sprintf("%s-%d", clientID, time.Now().Unix()))
+	rndBytes := make([]byte, 4)
+	rand.Read(rndBytes)
+	opt.SetClientID(fmt.Sprintf("%s-%s-%d", clientID, hex.EncodeToString(rndBytes), time.Now().Unix()))
 	opt.SetKeepAlive(30 * time.Second)
 	opt.SetConnectRetryInterval(10 * time.Second)
 	client := mqtt.NewClient(opt)

@@ -38,6 +38,22 @@ func verifySIM(m sierra.SierraModem) bool {
 	return m.IsSimOK()
 }
 
+func verifyWANT(m sierra.SierraModem) bool {
+	if !m.Open() {
+		return false
+	}
+	defer m.Close()
+	return m.IsWANT()
+}
+
+func setWANT(m sierra.SierraModem) bool {
+	if !m.Open() {
+		return false
+	}
+	defer m.Close()
+	return m.SetWANT()
+}
+
 func powerOffModem(m sierra.SierraModem) bool {
 	return m.PowerOff()
 }

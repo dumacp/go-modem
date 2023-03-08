@@ -39,7 +39,7 @@ var reset bool
 const (
 	pathudev      = "/etc/udev/rules.d/local.rules"
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.35"
+	versionString = "1.0.39"
 )
 
 func init() {
@@ -76,6 +76,8 @@ func main() {
 		if apn, err := getAPN(); err == nil {
 			log.Printf("new APN from ENV: %q", apn)
 			apnConn = apn
+		} else {
+			log.Println(err)
 		}
 	}
 

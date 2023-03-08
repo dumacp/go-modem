@@ -3,6 +3,7 @@ package control
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/dumacp/go-logs/pkg/logs"
@@ -162,8 +163,18 @@ func (act *CheckModemActor) startfsm() {
 			switch act.fsm.Current() {
 			case sStart:
 				act.behavior.Become(act.stateRun)
+				if !verifyWANT(act.mSierra) {
+					logs.LogWarn.Println("WANT is not OK!")
+					log.Println("WANT is not OK!")
+					if !setWANT(act.mSierra) {
+						logs.LogWarn.Println("set WANT is not OK!")
+					} else {
+						logs.LogWarn.Println("set WANT=1 was successful")
+					}
+				}
 				if !verifySIM(act.mSierra) {
 					logs.LogWarn.Println("SIM is not OK!")
+					log.Println("SIM is not OK!")
 					act.fsm.Event(testFailEvent)
 				} else {
 					logs.LogInfo.Println("SIM is OK!")
@@ -218,6 +229,7 @@ func (act *CheckModemActor) startfsm() {
 					if act.countError > 5 {
 						if !verifySIM(act.mSierra) {
 							logs.LogWarn.Println("SIM is not OK!")
+							log.Println("SIM is not OK!")
 						}
 						act.fsm.Event(connFailEvent)
 						break
@@ -244,6 +256,7 @@ func (act *CheckModemActor) startfsm() {
 				if err := pingFunc(act.testIP); err != nil {
 					if act.countError > 3 {
 						logs.LogWarn.Printf("ping error: %s\n", err)
+						log.Printf("ping error: %s\n", err)
 						act.fsm.Event(testFailEvent)
 					} else {
 						act.countError++
@@ -251,6 +264,7 @@ func (act *CheckModemActor) startfsm() {
 					break
 				}
 				logs.LogInfo.Println("modem NET connected!")
+				log.Println("modem NET connected!")
 				act.fsm.Event(testOKEvent)
 			case sReset:
 				func() {
@@ -282,6 +296,7 @@ func (act *CheckModemActor) startfsm() {
 				}
 				act.countReset++
 				logs.LogWarn.Println("reset modem")
+				log.Println("reset modem")
 				if !resetSWModem(act.mSierra) {
 					logs.LogWarn.Println("reset HW modem")
 					if !resetModem(act.mSierra) {
@@ -324,6 +339,14 @@ func (act *CheckModemActor) startfsm() {
 					resetUSBHost(act.mSierra)
 				}
 				time.Sleep(20 * time.Second)
+				if !verifyWANT(act.mSierra) {
+					logs.LogWarn.Println("WANT is not OK!")
+					if !setWANT(act.mSierra) {
+						logs.LogWarn.Println("set WANT is not OK!")
+					} else {
+						logs.LogWarn.Println("set WANT=1 was successful")
+					}
+				}
 				act.fsm.Event(powerOnEvent)
 			default:
 				time.Sleep(3 * time.Second)

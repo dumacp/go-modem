@@ -32,6 +32,7 @@ message ModemOnResponse {
 	bool State = 1;
 }
 message ModemReset {}
+message ModemResetRequest {}
 message ModemPowerOff {}
 message ModemConect {
 	string Apn = 1;
@@ -43,3 +44,6 @@ message ModemCheck {
 	string Addr = 1;
 	string Apn = 2;
 }
+message ModemVerifyGPS {
+}
+

@@ -29,6 +29,7 @@ type CheckModemActor struct {
 	countReset   int
 	countWait    int
 	resetCmd     bool
+	verifyGps    bool
 	lastReset    time.Time
 	disableReset bool
 }
@@ -64,7 +65,9 @@ func (state *CheckModemActor) stateInitial(context actor.Context) {
 	switch msg := context.Message().(type) {
 	case *actor.Started:
 		logs.LogInfo.Printf("Starting, \"netmodem\", pid: %v\n", context.Self())
-		state.testIP = ipTestInitial
+		if len(state.testIP) <= 0 {
+			state.testIP = ipTestInitial
+		}
 
 		state.startfsm()
 
@@ -113,10 +116,14 @@ func (state *CheckModemActor) stateRun(context actor.Context) {
 			state.remotesPID[context.Sender().GetId()] = context.Sender()
 		}
 		context.Respond(&messages.ModemOnResponse{State: true})
-	case *messages.ModemReset:
+	case *messages.ModemResetRequest:
 		fmt.Printf("%s\n", msg)
 		logs.LogWarn.Printf("external modem reset from \"%s\"\n", context.Sender().String())
 		state.resetCmd = true
+	case *messages.ModemVerifyGPS:
+		fmt.Printf("%s\n", msg)
+		logs.LogWarn.Printf("external GPS verify from \"%s\"\n", context.Sender().String())
+		state.verifyGps = true
 	case *msgFatal:
 		panic(msg.err)
 	}
