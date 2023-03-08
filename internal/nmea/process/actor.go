@@ -101,7 +101,7 @@ func (a *actorprocess) Receive(ctx actor.Context) {
 			if !result.valided {
 				return fmt.Errorf("invalid frame in process: %q", result.raw)
 			}
-			if gtype == GPRMC.Value() {
+			if gtype == GPRMC.Value() || gtype == GPGGA.Value() {
 				ctx.Send(ctx.Self(), &MsgSendFrame{
 					Topic: topicGPS,
 					Data:  []byte(result.raw),
@@ -192,7 +192,7 @@ func (a *actorprocess) Receive(ctx actor.Context) {
 		}
 	case *MsgTick:
 		rateBad := float64(a.countInvalidFrames) / timeoutBadFrames.Minutes()
-		badgps := fmt.Sprintf("{\"timeStamp\": %d, \"value\": %.2f, \"type\": %q}", time.Now().Unix(), rateBad, "GPSERROR")
+		badgps := fmt.Sprintf("{\"timeStamp\": %f, \"value\": %.2f, \"type\": %q}", float64(time.Now().UnixNano())/1000000000, rateBad, "GPSERROR")
 		a.countInvalidFrames = 0
 		fmt.Printf("last bad GPS frame -> %q\n", a.lastBad)
 		fmt.Printf("rate bad GPS -> %.2f\n", rateBad)
