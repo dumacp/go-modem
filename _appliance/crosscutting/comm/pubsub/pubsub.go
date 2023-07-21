@@ -145,7 +145,7 @@ func (ps *pubsubActor) Receive(ctx actor.Context) {
 			if tk.Error() != nil {
 				logs.LogError.Printf("end error: %s, with messages -> %v", msg)
 			} else {
-				logs.LogError.Printf("timeout error with message -> %v", msg)
+				logs.LogError.Printf("timeout error with message -> %s", msg)
 			}
 		}
 	case *actor.Stopping:

@@ -2,7 +2,6 @@ package control
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 )
 
@@ -22,21 +21,23 @@ func ifDown() error {
 	return nil
 }
 
-func getAPN() string {
-	apn := os.Getenv("APN")
-	if len(apn) <= 0 {
-		apn = ""
-	}
-	return apn
-}
+//func getAPN() string {
+//	apn := os.Getenv("APN")
+//	if len(apn) <= 0 {
+//		apn = ""
+//	}
+//	return apn
+//}
 
-func pingFunc(testIP string) (err error) {
+func pingFunc(testIP []string) (err error) {
 	var res []byte
-	for range []int{1, 2, 3} {
-		cmd1 := exec.Command("ping", testIP, "-c", "2", "-W", "2", "-q")
-		res, err = cmd1.Output()
-		if err == nil {
-			return nil
+	for _, v := range testIP {
+		for range []int{1, 2, 3} {
+			cmd1 := exec.Command("ping", v, "-c", "2", "-W", "2", "-q")
+			res, err = cmd1.Output()
+			if err == nil {
+				return nil
+			}
 		}
 	}
 	return fmt.Errorf("%s", res)

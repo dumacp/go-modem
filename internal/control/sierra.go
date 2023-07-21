@@ -9,7 +9,7 @@ const (
 	baudModem = 115200
 )
 
-//NewModem function to connect with sierra modem
+// NewModem function to connect with sierra modem
 func newModem(port string) sierra.SierraModem {
 	opts := &sierra.PortOptions{
 		Port: port,
@@ -74,12 +74,23 @@ func resetUSBHost(m sierra.SierraModem) bool {
 	return m.ResetUSBHost()
 }
 
-func reConnect(m sierra.SierraModem, apn string) bool {
+func reConnect(m sierra.SierraModem, apn ...string) bool {
 	if !m.Open() {
 		return false
 	}
 	defer m.Close()
 
-	succ, _ := m.ConnectToApn(apn)
-	return succ
+	if len(apn) <= 0 {
+		if ok, _ := m.ConnectToApn(""); ok {
+			return true
+		}
+		return false
+	}
+
+	for _, apn_ := range apn {
+		if ok, _ := m.ConnectToApn(apn_); ok {
+			return true
+		}
+	}
+	return false
 }

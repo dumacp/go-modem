@@ -23,8 +23,8 @@ type CheckModemActor struct {
 	context      actor.Context
 	remotesPID   map[string]*actor.PID
 	fsm          *fsm.FSM
-	testIP       string
-	apn          string
+	testIP       []string
+	apn          []string
 	countError   int
 	countReset   int
 	countWait    int
@@ -41,7 +41,7 @@ const (
 	ipTestInitial = "8.8.8.8"
 )
 
-func NewCheckModemActor(reset bool, port, iptest, apn string) actor.Actor {
+func NewCheckModemActor(reset bool, port string, iptest []string, apn ...string) actor.Actor {
 	act := &CheckModemActor{
 		behavior: actor.NewBehavior(),
 	}
@@ -66,7 +66,7 @@ func (state *CheckModemActor) stateInitial(context actor.Context) {
 	case *actor.Started:
 		logs.LogInfo.Printf("Starting, \"netmodem\", pid: %v\n", context.Self())
 		if len(state.testIP) <= 0 {
-			state.testIP = ipTestInitial
+			state.testIP = []string{ipTestInitial}
 		}
 
 		state.startfsm()
@@ -83,10 +83,12 @@ func (state *CheckModemActor) stateInitial(context actor.Context) {
 			if _, err := net.ResolveIPAddr("ip4:icmp", msg.Addr); err != nil {
 				log.Println(err)
 			} else {
-				state.testIP = msg.Addr
+				state.testIP = []string{msg.Addr}
 			}
 		}
-		state.apn = msg.Apn
+		if len(msg.Apn) > 0 {
+			state.apn = []string{msg.Apn}
+		}
 	case *msgFatal:
 		panic(msg.err)
 	}
@@ -106,10 +108,12 @@ func (state *CheckModemActor) stateRun(context actor.Context) {
 			if _, err := net.ResolveIPAddr("ip4:icmp", msg.Addr); err != nil {
 				log.Println(err)
 			} else {
-				state.testIP = msg.Addr
+				state.testIP = []string{msg.Addr}
 			}
 		}
-		state.apn = msg.Apn
+		if len(msg.Apn) > 0 {
+			state.apn = []string{msg.Apn}
+		}
 	case *messages.ModemOnRequest:
 		logs.LogInfo.Printf("%s from %s\n", msg, context.Sender().GetId())
 		if context.Sender() != nil {
@@ -143,10 +147,12 @@ func (state *CheckModemActor) stateReset(context actor.Context) {
 			if _, err := net.ResolveIPAddr("ip4:icmp", msg.Addr); err != nil {
 				log.Println(err)
 			} else {
-				state.testIP = msg.Addr
+				state.testIP = []string{msg.Addr}
 			}
 		}
-		state.apn = msg.Apn
+		if len(msg.Apn) > 0 {
+			state.apn = []string{msg.Apn}
+		}
 	case *messages.ModemOnRequest:
 		logs.LogInfo.Printf("%s from %s\n", msg, context.Sender().GetId())
 		if context.Sender() != nil {

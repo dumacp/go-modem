@@ -11,9 +11,8 @@ import (
 )
 
 const (
-	clientID       = "fare"
-	TopicAppliance = "appliance/fare"
-	//TopicEvents           = TopicAppliance + "/events"
+	clientID              = "fare"
+	TopicAppliance        = "appliance/fare"
 	TopicStart            = TopicAppliance + "/START"
 	TopicRestart          = TopicAppliance + "/RESTART"
 	TopicStop             = TopicAppliance + "/STOP"
@@ -21,19 +20,9 @@ const (
 	TopicRequestInfoState = TopicAppliance + "/RequestInfoState"
 )
 
-// //Gateway interface
-// type Gateway interface {
-// 	Receive(ctx actor.Context)
-// 	// Publish(topic string, msg []byte)
-// }
-
 type pubsubActor struct {
-	ctx actor.Context
-	// rootctx *actor.RootContext
-	// behavior      actor.Behavior
-	// state         messages.StatusResponse_StateType
-	client mqtt.Client
-	// mux           sync.Mutex
+	ctx           actor.Context
+	client        mqtt.Client
 	subscriptions map[string]*subscribeMSG
 }
 
@@ -45,7 +34,6 @@ func getInstance(ctx *actor.RootContext) *pubsubActor {
 
 	once.Do(func() {
 		instance = &pubsubActor{}
-		// instance.mux = sync.Mutex{}
 		instance.subscriptions = make(map[string]*subscribeMSG)
 		if ctx == nil {
 			ctx = actor.NewActorSystem().Root
@@ -87,9 +75,7 @@ func Publish(topic string, msg []byte) {
 func Subscribe(topic string, pid *actor.PID, parse func([]byte) interface{}) error {
 	instance := getInstance(nil)
 	subs := &subscribeMSG{pid: pid, parse: parse}
-	// instance.mux.Lock()
 	instance.subscriptions[topic] = subs
-	// instance.mux.Unlock()
 	if !instance.client.IsConnected() {
 		// instance.ctx.PoisonFuture(instance.ctx.Self()).Wait()
 		return fmt.Errorf("pubsub is not connected")
@@ -140,7 +126,7 @@ func (ps *pubsubActor) Receive(ctx actor.Context) {
 			if tk.Error() != nil {
 				logs.LogError.Printf("end error: %s, with messages -> %v", tk.Error(), msg)
 			} else {
-				logs.LogError.Printf("timeout error with message -> %v", msg)
+				logs.LogError.Printf("timeout error with message -> %s", msg)
 			}
 		}
 	case *actor.Stopping:
@@ -152,15 +138,6 @@ func (ps *pubsubActor) Receive(ctx actor.Context) {
 		logs.LogError.Println("Restarting, actor is about to restart")
 	}
 }
-
-// func (ps *pubsubActor) Started(ctx actor.Context) {
-// 	ps.ctx = ctx
-// 	switch ctx.Message().(type) {
-// 	}
-// }
-
-// func (ps *pubsubActor) Stopped(ctx actor.Context) {
-// }
 
 func client() mqtt.Client {
 	opt := mqtt.NewClientOptions().AddBroker("tcp://127.0.0.1:1883")

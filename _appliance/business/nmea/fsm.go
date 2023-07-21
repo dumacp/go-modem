@@ -164,8 +164,9 @@ func (a *actornmea) startfsm(chQuit chan int) {
 				case data := <-chData:
 					pData, err := processData(data, a.distanceMin, lastPoint, queue)
 					if err != nil {
-						logs.LogWarn.Println(err)
+
 						if countFail > 10 {
+							logs.LogWarn.Println(err)
 							return err
 						}
 						countFail += 1

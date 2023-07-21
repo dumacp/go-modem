@@ -39,7 +39,7 @@ var reset bool
 const (
 	pathudev      = "/etc/udev/rules.d/local.rules"
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.39"
+	versionString = "1.0.40"
 )
 
 func init() {
@@ -54,7 +54,7 @@ func init() {
 	flag.StringVar(&portNmea, "portNmea", "/dev/ttyGPS", "device serial to read.")
 	flag.StringVar(&portModem, "portModem", "/dev/ttyMODEM", "device serial to conf modem.")
 	flag.StringVar(&apnConn, "apn", "", "APN net")
-	flag.StringVar(&ipTest, "testip", ipTestInitial, "test IP (ping test connection)")
+	flag.StringVar(&ipTest, "testip", "", "test IP (ping test connection)")
 	flag.IntVar(&distanceMin, "distance", 30, "minimun distance traveled before to send")
 }
 
@@ -67,18 +67,37 @@ func main() {
 	}
 	initLogs(debug, logstd)
 
-	if strings.Contains(ipTest, ipTestInitial) ||
-		len(apnConn) <= 0 {
+	var ipTests []string
+	if len(ipTest) <= 0 {
 		if testIP, err := getTestIP(); err == nil {
 			log.Printf("new testIP from ENV: %q", testIP)
 			ipTest = testIP
 		}
+	}
+	if v := strings.Split(ipTest, ","); len(v) > 0 {
+		if len(v[len(v)-1]) == 0 {
+			v = append(v, ipTestInitial)
+		}
+		ipTests = v
+	} else {
+		ipTests = []string{ipTestInitial}
+	}
+	var apns []string
+	if len(apnConn) <= 0 {
 		if apn, err := getAPN(); err == nil {
 			log.Printf("new APN from ENV: %q", apn)
 			apnConn = apn
 		} else {
 			log.Println(err)
 		}
+	}
+	if v := strings.Split(apnConn, ","); len(v) > 0 {
+		if len(v[len(v)-1]) > 0 {
+			v = append(v, "")
+		}
+		apns = v
+	} else {
+		apns = []string{""}
 	}
 
 	if portNmea == "/dev/ttyGPS" {
@@ -142,7 +161,7 @@ func main() {
 			propsNmea := actor.PropsFromFunc(nmeaA.Receive)
 			processA := process.NewActor(timeout, distanceMin)
 			propsProcess := actor.PropsFromFunc(processA.Receive)
-			controlA := control.NewCheckModemActor(reset, portModem, ipTest, apnConn)
+			controlA := control.NewCheckModemActor(reset, portModem, ipTests, apns...)
 			propsCheck := actor.PropsFromFunc(controlA.Receive)
 			pidNmea, err := c.SpawnNamed(propsNmea, "nmeaGPS")
 			if err != nil {
@@ -196,10 +215,6 @@ func getTestIP() (string, error) {
 	if len(testIP) <= 0 {
 		return "", fmt.Errorf("TEST_IP not found")
 	}
-	if strings.Contains(testIP, ipTest) && len(ipTest) > 0 {
-		return "", fmt.Errorf("already testIP")
-	}
-	// ipTest = testIP
 	return testIP, nil
 }
 
@@ -207,9 +222,6 @@ func getAPN() (string, error) {
 	apn := os.Getenv("APN")
 	if len(apn) <= 0 {
 		return "", fmt.Errorf("APN not found")
-	}
-	if strings.Contains(apn, apnConn) && len(apnConn) > 0 {
-		return "", fmt.Errorf("already APN")
 	}
 	return apn, nil
 }

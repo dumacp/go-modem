@@ -225,7 +225,7 @@ func (act *CheckModemActor) startfsm() {
 					act.fsm.Event(resetCmdEvent)
 					break
 				}
-				if !reConnect(act.mSierra, act.apn) {
+				if !reConnect(act.mSierra, act.apn...) {
 					if act.countError > 5 {
 						if !verifySIM(act.mSierra) {
 							logs.LogWarn.Println("SIM is not OK!")
