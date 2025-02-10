@@ -80,6 +80,12 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZm
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
 github.com/dumacp/go-actors v0.0.0-20200825200127-9826844a1688/go.mod h1:fn9YM+ttFxxZskqKK9gyEAKG9mMUaOmfbVWWFf+sdhI=
 github.com/dumacp/go-gwiot v0.0.0-20200927232259-44682fbd1e4a/go.mod h1:hrtve4zspRw/E8r9ukB4/7PvmoGobFzRwDeffVZILnE=
+github.com/dumacp/go-logs v0.0.0-20211122205852-dfcc5685457f h1:+ezKqLaH1EecXOSsz/sLS8CzrsXkNi5jmI7Q1DUOWBQ=
+github.com/dumacp/go-logs v0.0.0-20211122205852-dfcc5685457f/go.mod h1:dr8qC0qs36jLZFMZH/sRp3fc980yzZDCb/MkR/rHOSA=
+github.com/dumacp/go-logs v0.0.1 h1:X6pBagK6lCgNyz+MluT1V3cvoHnJsZCSIz5pjYe9YBc=
+github.com/dumacp/go-logs v0.0.1/go.mod h1:nxB2d1DaPSLGnz+0zuR29N/YRq7THIVwQLDHf0jBSRc=
+github.com/dumacp/go-logs v0.0.2-0.20241119230451-ac5d49be15ce h1:ZIutTKGHeQxk2dnB3Br9G6+Ah6NIUR7Vg1zjfphN6gk=
+github.com/dumacp/go-logs v0.0.2-0.20241119230451-ac5d49be15ce/go.mod h1:nxB2d1DaPSLGnz+0zuR29N/YRq7THIVwQLDHf0jBSRc=
 github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52 h1:2lzgBwOrKsWZcmqaCk1OgNcMAsHuUor4vc3WaEfYzVE=
 github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52/go.mod h1:ZVDQY1pOKAVSjiLXPmvcPfQJkKDyREXJuW411QwP5D0=
 github.com/dumacp/keycloak v0.0.0-20191212174805-9e9a5c3da24f/go.mod h1:BgK7K50ZkA5AicZMJkZktKpiFyMQzCkrO3wPCZ4nIOQ=
