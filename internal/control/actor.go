@@ -30,6 +30,7 @@ type CheckModemActor struct {
 	countWait    int
 	resetCmd     bool
 	verifyGps    bool
+	disableWANT  bool
 	lastReset    time.Time
 	disableReset bool
 }
@@ -41,7 +42,7 @@ const (
 	ipTestInitial = "8.8.8.8"
 )
 
-func NewCheckModemActor(reset bool, port string, iptest []string, apn ...string) actor.Actor {
+func NewCheckModemActor(reset bool, port string, iptest []string, apn ...string) *CheckModemActor {
 	act := &CheckModemActor{
 		behavior: actor.NewBehavior(),
 	}
@@ -54,6 +55,10 @@ func NewCheckModemActor(reset bool, port string, iptest []string, apn ...string)
 	act.behavior.Become(act.stateInitial)
 
 	return act
+}
+
+func (state *CheckModemActor) DisableWATN() {
+	state.disableWANT = true
 }
 
 func (state *CheckModemActor) Receive(context actor.Context) {

@@ -35,11 +35,13 @@ var distanceMin int
 
 var version bool
 var reset bool
+var dwant bool
+var dgps bool
 
 const (
 	pathudev      = "/etc/udev/rules.d/local.rules"
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.40"
+	versionString = "1.0.42_test"
 )
 
 func init() {
@@ -47,7 +49,7 @@ func init() {
 	flag.BoolVar(&logstd, "logStd", false, "logs in stderr")
 	flag.BoolVar(&version, "version", false, "swho version")
 	flag.BoolVar(&reset, "disablereset", false, "disable remote reset")
-	flag.BoolVar(&mqtt, "mqtt", false, "[DEPRECATED] send messages to local broker.")
+	flag.BoolVar(&mqtt, "mqtt", false, fmt.Sprint("\x1B[9m", "send messages to local broker.", "\x1B[0m", " [DEPRECATED]"))
 	flag.IntVar(&port, "port", 8082, "port actor in remote mode")
 	flag.IntVar(&timeout, "timeout", 30, "timeout to capture frames.")
 	flag.IntVar(&baudRate, "baudRate", 115200, "baud rate to capture nmea's frames.")
@@ -56,6 +58,8 @@ func init() {
 	flag.StringVar(&apnConn, "apn", "", "APN net")
 	flag.StringVar(&ipTest, "testip", "", "test IP (ping test connection)")
 	flag.IntVar(&distanceMin, "distance", 30, "minimun distance traveled before to send")
+	flag.BoolVar(&dwant, "dwant", false, "disable WANT in modem")
+	flag.BoolVar(&dgps, "dgps", false, "disable GPS in modem")
 }
 
 func main() {
@@ -162,28 +166,33 @@ func main() {
 			processA := process.NewActor(timeout, distanceMin)
 			propsProcess := actor.PropsFromFunc(processA.Receive)
 			controlA := control.NewCheckModemActor(reset, portModem, ipTests, apns...)
+			if dwant {
+				controlA.DisableWATN()
+			}
 			propsCheck := actor.PropsFromFunc(controlA.Receive)
-			pidNmea, err := c.SpawnNamed(propsNmea, "nmeaGPS")
-			if err != nil {
-				logs.LogError.Panic(err)
-			}
-			pidProcess, err := c.SpawnNamed(propsProcess, "processGPS")
-			if err != nil {
-				logs.LogError.Panic(err)
-			}
 			pidCheck, err := c.SpawnNamed(propsCheck, "checkmodem")
 			if err != nil {
 				logs.LogError.Panic(err)
 			}
-			c.Watch(pidNmea)
+			if !dgps {
+				pidNmea, err := c.SpawnNamed(propsNmea, "nmeaGPS")
+				if err != nil {
+					logs.LogError.Panic(err)
+				}
+				pidProcess, err := c.SpawnNamed(propsProcess, "processGPS")
+				if err != nil {
+					logs.LogError.Panic(err)
+				}
+				c.Watch(pidNmea)
+				c.Watch(pidProcess)
+				c.Send(pidNmea, &device.AddressModem{
+					Addr: pidCheck.GetAddress(),
+					ID:   pidCheck.GetId(),
+				})
+				c.RequestWithCustomSender(pidNmea, &device.MsgSubscribeProcess{}, pidProcess)
+				c.RequestWithCustomSender(pidNmea, &device.MsgSubscribeModem{}, pidCheck)
+			}
 			c.Watch(pidCheck)
-			c.Watch(pidProcess)
-			c.Send(pidNmea, &device.AddressModem{
-				Addr: pidCheck.GetAddress(),
-				ID:   pidCheck.GetId(),
-			})
-			c.RequestWithCustomSender(pidNmea, &device.MsgSubscribeProcess{}, pidProcess)
-			c.RequestWithCustomSender(pidNmea, &device.MsgSubscribeModem{}, pidCheck)
 
 		case *actor.Terminated:
 			logs.LogError.Printf("actor terminated: %s", msg.Who.GetId())

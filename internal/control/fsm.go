@@ -163,7 +163,7 @@ func (act *CheckModemActor) startfsm() {
 			switch act.fsm.Current() {
 			case sStart:
 				act.behavior.Become(act.stateRun)
-				if !verifyWANT(act.mSierra) {
+				if !act.disableWANT && !verifyWANT(act.mSierra) {
 					logs.LogWarn.Println("WANT is not OK!")
 					log.Println("WANT is not OK!")
 					if !setWANT(act.mSierra) {
@@ -339,7 +339,7 @@ func (act *CheckModemActor) startfsm() {
 					resetUSBHost(act.mSierra)
 				}
 				time.Sleep(20 * time.Second)
-				if !verifyWANT(act.mSierra) {
+				if !act.disableWANT && !verifyWANT(act.mSierra) {
 					logs.LogWarn.Println("WANT is not OK!")
 					if !setWANT(act.mSierra) {
 						logs.LogWarn.Println("set WANT is not OK!")
