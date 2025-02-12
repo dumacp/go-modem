@@ -269,7 +269,7 @@ func (act *CheckModemActor) startfsm() {
 			case sReset:
 				func() {
 					defer func() {
-						if timeoutReset < 17*time.Minute {
+						if timeoutReset < 15*time.Minute {
 							timeoutReset = timeoutReset + 2*time.Minute
 						} else {
 							timeoutReset = 2 * time.Minute

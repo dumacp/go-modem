@@ -1,6 +1,7 @@
 package device
 
 import (
+	"errors"
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -74,7 +75,12 @@ func (act *actornmea) Receive(ctx actor.Context) {
 	case *msgFatal:
 		logs.LogError.Printf("nmead read failed: %s", msg.err)
 		if act.modemPID != nil {
-			act.context.Request(act.modemPID, &messages.ModemOnRequest{})
+			switch {
+			case errors.Is(msg.err, errReset):
+				act.context.Request(act.modemPID, &messages.ModemResetRequest{})
+			default:
+				act.context.Request(act.modemPID, &messages.ModemOnRequest{})
+			}
 		}
 	case *MsgSubscribeModem:
 		if ctx.Sender() != nil {

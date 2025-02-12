@@ -97,6 +97,7 @@ func (a *actornmea) startfsm(chQuit chan int) {
 
 		var reader *bufio.Reader
 		countFail := 0
+		countFailReset := 0
 		countEmpty := 0
 		a.fsm.SetState(sStart)
 		for {
@@ -137,7 +138,13 @@ func (a *actornmea) startfsm(chQuit chan int) {
 					time.Sleep(1 * time.Second)
 					a.fsm.Event(connectOKEvent)
 				case sReset:
-					a.context.Send(a.context.Self(), &msgFatal{err: errors.New("many errors")})
+					countFailReset++
+					if countFailReset > 10 {
+						countFailReset = 0
+						a.context.Send(a.context.Self(), &msgFatal{err: errReset})
+					} else {
+						a.context.Send(a.context.Self(), &msgFatal{err: errNmea})
+					}
 					time.Sleep(3 * time.Second)
 					a.fsm.Event(resetEvent)
 				case sRun:

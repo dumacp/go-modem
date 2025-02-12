@@ -1,5 +1,10 @@
 package device
 
+import "errors"
+
+var errReset = errors.New("nmea reset error")
+var errNmea = errors.New("nmea error")
+
 type msgFatal struct {
 	err error
 }
