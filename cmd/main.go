@@ -41,7 +41,7 @@ var dgps bool
 const (
 	pathudev      = "/etc/udev/rules.d/local.rules"
 	ipTestInitial = "8.8.8.8"
-	versionString = "1.0.42_test"
+	versionString = "1.0.43_test"
 )
 
 func init() {
